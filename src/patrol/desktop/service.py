@@ -40,10 +40,15 @@ def safe_report_name(filename: str) -> bool:
 def open_path(path: Path | str) -> None:
     """用系统默认程序打开文件/目录(报告文件交付物、配置目录等)。"""
     import os
+    import subprocess
 
-    if not hasattr(os, "startfile"):  # pragma: no cover - 非 Windows
-        raise RuntimeError("当前平台不支持打开文件操作")
-    os.startfile(str(path))  # noqa: S606
+    p = str(path)
+    if hasattr(os, "startfile"):  # Windows
+        os.startfile(p)  # noqa: S606
+    elif sys.platform == "darwin":
+        subprocess.run(["open", p], check=False)  # noqa: S603,S607
+    else:  # Linux/其他:桌面环境标准打开方式
+        subprocess.run(["xdg-open", p], check=False)  # noqa: S603,S607
 
 
 # ── 设备/客户 ──────────────────────────────────────────────────

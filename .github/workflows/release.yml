@@ -1,0 +1,41 @@
+name: Release
+
+# 发版流程:推送 v* 标签(或网页 Draft release 建标签)自动触发
+# 三平台跑测试 → Windows 构建绿色包 → 自动挂到 GitHub Release
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: 运行测试(全量)
+        if: matrix.os == 'windows-latest'
+        run: python -m pytest -q
+      - name: 运行测试(跳过桌面 Tk 用例)
+        if: matrix.os != 'windows-latest'
+        run: python -m pytest -q --ignore=tests/test_desktop
+
+  windows-package:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e . pyinstaller
+      - run: python packaging/build_portable.py
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip

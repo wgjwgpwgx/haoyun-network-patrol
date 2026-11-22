@@ -5,6 +5,16 @@
 - 双击即用:默认是 **Windows 桌面小工具**(原生界面,零依赖、无浏览器、无黑框);`--web` 参数可起网页模式远程访问(带登录认证)
 - 桌面端纯 Tkinter 实现,不引入任何第三方 UI 依赖;按钮/主题为纯标准库自绘
 
+## 平台支持
+
+| 平台 | 推荐形态 | 说明 |
+|------|----------|------|
+| Windows 10/11 | **绿色包 exe**(见 [Releases](../../releases),双击即用) | 主力交付形态,桌面小工具 + Web 全功能 |
+| Linux / macOS | `pip install -e .` 后运行(见下方快速开始) | Web 模式全功能;桌面小工具可跑(需系统 Tk) |
+| 任意终端浏览器 | `--web` 模式远程访问 | 天然跨平台 |
+
+> PDF 导出:Windows 自动使用 Microsoft Word;Linux/macOS 自动改用 LibreOffice(`sudo apt install libreoffice-writer fonts-wqy-microhei` 或 `brew install --cask libreoffice`)。
+
 ## 功能特性
 
 - **7 厂商 10 种设备类型**:H3C×3(comware 交换机 / S7506E / SecPath 防火墙)、华为×2(VRP 交换机 / USG 防火墙)、锐捷、深信服、迪普、Juniper Junos、Cisco IOS

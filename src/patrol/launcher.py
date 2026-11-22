@@ -93,6 +93,8 @@ def _ensure_cli_output() -> None:
     """
     if not is_frozen():
         return
+    if sys.platform != "win32":
+        return  # 控制台接管为 Windows 冻结包专用,其他平台无需处理
 
     def _fileno(stream) -> int | None:
         try:
