@@ -27,6 +27,17 @@ def test_plaintext_passthrough():
     assert protect("") == ""                      # 空不加密
 
 
+def test_non_windows_degrades_to_plain(monkeypatch):
+    """非 Windows:加密原样返回、密文宁空勿错(修复模块级 ctypes NameError)。"""
+    from patrol.utils import crypto
+    monkeypatch.setattr(crypto, "_IS_WINDOWS", False)
+    assert crypto.protect("s3cret") == "s3cret"
+    assert crypto.unprotect(PREFIX + "AAAA") == ""
+    d = {"name": "t", "password": "pw", "api_token": "tk"}
+    out = crypto.encrypt_device_dict(d)
+    assert out["password"] == "pw" and out["api_token"] == "tk"
+
+
 def test_store_disk_is_cipher_memory_is_plain(tmp_path: Path):
     ds = DeviceStore(str(tmp_path / "d.yaml"))
     ds.create({"name": "t", "host": "10.0.0.1", "password": "Pw#123",

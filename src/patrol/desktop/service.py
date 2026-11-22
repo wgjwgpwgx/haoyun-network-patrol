@@ -627,10 +627,14 @@ def _schedule_tr() -> str:
 def schedule_status() -> dict:
     """查询计划任务安装状态 {installed, weekly}。"""
     import subprocess
+    import sys
 
+    if sys.platform != "win32":
+        return {"installed": False, "weekly": False}  # schtasks 仅 Windows
     r = subprocess.run(  # noqa: S603
         ["schtasks", "/Query", "/TN", SCHEDULE_TASK_NAME],
-        capture_output=True, text=True)
+        capture_output=True, text=True,
+        encoding="gbk", errors="replace")  # schtasks 输出为控制台代码页(中文系统 GBK)
     installed = r.returncode == 0
     weekly = installed and "每周" in (r.stdout or "") or \
         installed and "Weekly" in (r.stdout or "")
@@ -650,7 +654,8 @@ def install_schedule(weekly: bool = True) -> None:
         args += ["/SC", "WEEKLY", "/D", "WED"]
     else:
         args += ["/SC", "MONTHLY", "/D", "1"]
-    r = subprocess.run(args, capture_output=True, text=True)  # noqa: S603
+    r = subprocess.run(args, capture_output=True, text=True,
+                       encoding="gbk", errors="replace")  # noqa: S603
     if r.returncode != 0:
         raise RuntimeError(f"计划任务创建失败: {(r.stderr or r.stdout).strip()}")
 
@@ -661,4 +666,5 @@ def remove_schedule() -> None:
 
     subprocess.run(  # noqa: S603
         ["schtasks", "/Delete", "/F", "/TN", SCHEDULE_TASK_NAME],
-        capture_output=True, text=True)
+        capture_output=True, text=True,
+        encoding="gbk", errors="replace")

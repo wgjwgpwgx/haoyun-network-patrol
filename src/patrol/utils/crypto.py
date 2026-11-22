@@ -17,7 +17,9 @@ PREFIX = "enc$"
 _FIELDS = ("password", "super_password", "api_token")
 
 _IS_WINDOWS = sys.platform == "win32"
-_crypt32 = None
+# DPAPI 全套(ctypes 类型/句柄/转换函数)必须整体收在 Windows 分支内,
+# 否则非 Windows 平台模块级 class _DATA_BLOB(ctypes.Structure) 即 NameError
+# (import 链: sqlstore -> crypto, 收集期崩溃导致 CI 三平台测试失败)。
 if _IS_WINDOWS:
     import ctypes
     import ctypes.wintypes as wt
@@ -25,21 +27,17 @@ if _IS_WINDOWS:
     _crypt32 = ctypes.WinDLL("Crypt32.dll")
     _kernel32 = ctypes.WinDLL("Kernel32.dll")
 
-
-class _DATA_BLOB(ctypes.Structure):
-    if _IS_WINDOWS:
+    class _DATA_BLOB(ctypes.Structure):
         _fields_ = [("cbData", wt.DWORD), ("pbData", ctypes.POINTER(ctypes.c_char))]
 
+    def _blob(data: bytes) -> "_DATA_BLOB":
+        buf = ctypes.create_string_buffer(data, len(data))
+        return _DATA_BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
 
-def _blob(data: bytes) -> "_DATA_BLOB":
-    buf = ctypes.create_string_buffer(data, len(data))
-    return _DATA_BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
-
-
-def _unblob(blob: "_DATA_BLOB") -> bytes:
-    out = ctypes.string_at(blob.pbData, blob.cbData)
-    _kernel32.LocalFree(blob.pbData)
-    return out
+    def _unblob(blob: "_DATA_BLOB") -> bytes:
+        out = ctypes.string_at(blob.pbData, blob.cbData)
+        _kernel32.LocalFree(blob.pbData)
+        return out
 
 
 def protect(plain: str) -> str:

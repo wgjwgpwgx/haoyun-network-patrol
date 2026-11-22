@@ -14,6 +14,12 @@ def test_tr_wraps_cd_and_run():
     assert ("run" in tr) or ("-m patrol" in tr)
 
 
+def test_schedule_status_non_windows():
+    """非 Windows:schtasks 不存在,直接返回未安装(不抛 FileNotFoundError)。"""
+    with patch("sys.platform", "linux"):
+        assert service.schedule_status() == {"installed": False, "weekly": False}
+
+
 def test_install_weekly_args():
     with patch("subprocess.run") as m:
         m.return_value.returncode = 0
