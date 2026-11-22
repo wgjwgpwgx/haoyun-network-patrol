@@ -57,10 +57,11 @@ def make_icon() -> None:
 
 def make_version_info() -> None:
     """生成 exe 文件属性(右键->属性->详细信息)。"""
-    content = """VSVersionInfo(
+    vt = tuple(int(x) for x in VERSION.split(".")[:3]) + (0,)
+    content = f"""VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(0, 1, 0, 0),
-    prodvers=(0, 1, 0, 0),
+    filevers={vt},
+    prodvers={vt},
     mask=0x3F,
     flags=0x0,
     OS=0x40004,
@@ -75,12 +76,12 @@ def make_version_info() -> None:
         [
           StringStruct("CompanyName", "Haoyun Networks"),
           StringStruct("FileDescription", "昊云网络巡检助手"),
-          StringStruct("FileVersion", VERSION),
+          StringStruct("FileVersion", "{VERSION}"),
           StringStruct("InternalName", "patrol"),
           StringStruct("LegalCopyright", "Copyright 2026 Haoyun Networks"),
           StringStruct("OriginalFilename", "启动巡检助手.exe"),
           StringStruct("ProductName", "昊云网络巡检助手"),
-          StringStruct("ProductVersion", VERSION),
+          StringStruct("ProductVersion", "{VERSION}"),
         ],
       )
     ]),
