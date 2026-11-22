@@ -22,9 +22,18 @@ from pathlib import Path
 
 APP_NAME = "昊云网络巡检助手"
 EXE_NAME = "启动巡检助手"
-VERSION = "0.1.0"
+
+
+def _read_version() -> str:
+    """从 pyproject.toml 读取版本(单一事实源,避免升版漏改打包常量)。"""
+    for line in (ROOT / "pyproject.toml").read_text(encoding="utf-8").splitlines():
+        if line.startswith("version"):
+            return line.split('"')[1]
+    raise RuntimeError("pyproject.toml 中未找到 version")
+
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = _read_version()
 BUILD_DIR = ROOT / "build"
 SPEC = ROOT / "packaging" / "patrol_portable.spec"
 DIST_ROOT = ROOT / "dist"
@@ -66,12 +75,12 @@ def make_version_info() -> None:
         [
           StringStruct("CompanyName", "Haoyun Networks"),
           StringStruct("FileDescription", "昊云网络巡检助手"),
-          StringStruct("FileVersion", "0.1.0"),
+          StringStruct("FileVersion", VERSION),
           StringStruct("InternalName", "patrol"),
           StringStruct("LegalCopyright", "Copyright 2026 Haoyun Networks"),
           StringStruct("OriginalFilename", "启动巡检助手.exe"),
           StringStruct("ProductName", "昊云网络巡检助手"),
-          StringStruct("ProductVersion", "0.1.0"),
+          StringStruct("ProductVersion", VERSION),
         ],
       )
     ]),
