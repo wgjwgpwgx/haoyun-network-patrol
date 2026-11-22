@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}多期对比 - 巡检助手{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="bi bi-arrow-left-right"></i> 巡检结果对比</h5>
+    <a href="/ui/reports" class="btn btn-outline-secondary btn-sm">返回报告列表</a>
+</div>
+
+<!-- 选择两期报告 -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" action="/ui/reports/compare" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small mb-0">基期(上次)</label>
+                <select name="a" class="form-select form-select-sm">
+                    {% for r in all_reports %}
+                    <option value="{{ r.name }}" {{ 'selected' if a == r.name else '' }}>{{ r.name }} ({{ r.modified }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small mb-0">对比期(本次)</label>
+                <select name="b" class="form-select form-select-sm">
+                    {% for r in all_reports %}
+                    <option value="{{ r.name }}" {{ 'selected' if b == r.name else '' }}>{{ r.name }} ({{ r.modified }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-arrow-left-right"></i> 对比</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if comparison %}
+<!-- 总览对比 -->
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div class="text-muted small">健康评分</div>
+                <div class="d-flex justify-content-center align-items-center gap-2 mt-1">
+                    <span style="font-size:22px;font-weight:bold;color:{{ '#52c41a' if comparison.health_b >= comparison.health_a else '#ff4d4f' }}">
+                        {{ comparison.health_b }}</span>
+                    {% if comparison.health_b > comparison.health_a %}
+                    <span class="text-success"><i class="bi bi-arrow-up"></i>+{{ comparison.health_b - comparison.health_a }}</span>
+                    {% elif comparison.health_b < comparison.health_a %}
+                    <span class="text-danger"><i class="bi bi-arrow-down"></i>{{ comparison.health_b - comparison.health_a }}</span>
+                    {% else %}
+                    <span class="text-muted">→ 持平</span>
+                    {% endif %}
+                </div>
+                <div class="text-muted small mt-1">基期 {{ comparison.health_a }} → 对比期 {{ comparison.health_b }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div class="text-muted small">异常项</div>
+                <div class="d-flex justify-content-center gap-3 mt-2">
+                    <div><span class="text-success fs-5">{{ comparison.resolved_count }}</span><br><small class="text-muted">已解决</small></div>
+                    <div><span class="text-danger fs-5">{{ comparison.new_count }}</span><br><small class="text-muted">新增</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div class="text-muted small">检查结果</div>
+                <div class="d-flex justify-content-center gap-2 mt-2">
+                    <span class="badge bg-success">P: {{ comparison.pass_b }}</span>
+                    <span class="badge bg-danger">F: {{ comparison.fail_b }}</span>
+                    <span class="badge bg-warning text-dark">U: {{ comparison.unknown_b }}</span>
+                </div>
+                <div class="text-muted small mt-1">基期 P:{{ comparison.pass_a }} F:{{ comparison.fail_a }} U:{{ comparison.unknown_a }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div class="text-muted small">配置变更</div>
+                <div class="fs-5 mt-2">
+                    {% if comparison.config_changes %}
+                    <span class="text-warning">{{ comparison.config_changes }} 处</span>
+                    {% else %}
+                    <span class="text-success">无变更</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 异常明细对比 -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white py-2">
+                <b><i class="bi bi-check-circle"></i> 已解决({{ comparison.resolved|length }})</b>
+            </div>
+            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>设备</th><th>检查项</th></tr></thead>
+                    <tbody>
+                    {% for item in comparison.resolved %}
+                    <tr class="table-success">
+                        <td>{{ item.device }}</td><td>{{ item.check }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-center text-muted py-3">无</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white py-2">
+                <b><i class="bi bi-exclamation-circle"></i> 新增异常({{ comparison.new_items|length }})</b>
+            </div>
+            <div class="card-body p-0" style="max-height:300px;overflow-y:auto">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>设备</th><th>检查项</th><th>描述</th></tr></thead>
+                    <tbody>
+                    {% for item in comparison.new_items %}
+                    <tr class="table-danger">
+                        <td>{{ item.device }}</td><td>{{ item.check }}</td>
+                        <td class="small">{{ item.message[:50] }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-center text-muted py-3">无</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

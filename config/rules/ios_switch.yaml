@@ -1,0 +1,84 @@
+# Cisco IOS 设备巡检规则
+# 基于标准 IOS 检查项编写,check_name 与 IOSDriver 的命令/解析器对应。
+# 注意:解析器尚未真机验证,规则命中情况以真机验收为准。
+
+rules:
+  - id: "C001"
+    check_name: "fan_status"
+    name: "风扇状态异常"
+    description: "存在状态非 OK 的风扇"
+    severity: "critical"
+    vendors: ["cisco"]
+    device_types: ["ios_switch"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查风扇模块与风道,必要时更换风扇"
+
+  - id: "C002"
+    check_name: "power_status"
+    name: "电源模块状态异常"
+    description: "存在状态非 OK 的电源模块"
+    severity: "critical"
+    vendors: ["cisco"]
+    device_types: ["ios_switch"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查电源线与电源模块,必要时更换;确认冗余电源配置"
+
+  - id: "C003"
+    check_name: "logbuffer"
+    name: "日志中存在严重级别告警"
+    description: "show logging 中存在 severity<=3 的日志条目"
+    severity: "warning"
+    vendors: ["cisco"]
+    device_types: ["ios_switch"]
+    metric: "error_count"
+    operator: "gt"
+    value: 0
+    suggestion: "查看 show logging 明细,重点排查 LINK/ENV/SPANTREE 类告警"
+
+  - id: "C004"
+    check_name: "telnet_service"
+    name: "Telnet 管理服务已启用"
+    description: "VTY 线路允许 Telnet 接入(transport input telnet/all)"
+    severity: "warning"
+    vendors: ["cisco"]
+    device_types: ["ios_switch"]
+    metric: "telnet_enabled"
+    operator: "true"
+    suggestion: "配置 transport input ssh,关闭 Telnet 管理"
+
+  - id: "C005"
+    check_name: "snmp_community"
+    name: "SNMP 使用默认 Community"
+    description: "SNMP 使用 public/private 等默认团体字"
+    severity: "critical"
+    vendors: ["cisco"]
+    device_types: ["ios_switch"]
+    metric: "has_dangerous"
+    operator: "true"
+    suggestion: "修改 SNMP 团体字为复杂字符串,或使用 SNMPv3"
+
+  - id: "C006"
+    check_name: "vty_auth"
+    name: "未启用 AAA 认证"
+    description: "设备未配置 aaa new-model"
+    severity: "critical"
+    vendors: ["cisco"]
+    device_types: ["ios_switch"]
+    metric: "has_authentication"
+    operator: "false"
+    suggestion: "配置 aaa new-model 与集中认证"
+
+  - id: "C007"
+    check_name: "stp_status"
+    name: "生成树未启用"
+    description: "设备未配置 spanning-tree mode"
+    severity: "warning"
+    vendors: ["cisco"]
+    device_types: ["ios_switch"]
+    metric: "stp_enabled"
+    operator: "false"
+    suggestion: "配置 spanning-tree mode rapid-pvst(或 mst)"

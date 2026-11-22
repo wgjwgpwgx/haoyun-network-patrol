@@ -1,0 +1,4 @@
+Slot 1:
+  Current sessions: 24568
+Slot 2:
+  Current sessions: 18342

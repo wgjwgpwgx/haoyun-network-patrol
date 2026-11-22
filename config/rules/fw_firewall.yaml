@@ -1,0 +1,35 @@
+# 迪普 DPtech 防火墙巡检规则
+
+rules:
+  - id: "DP001"
+    check_name: "cpu_usage"
+    name: "CPU 利用率过高"
+    severity: "critical"
+    vendors: ["dptech"]
+    device_types: ["fw_firewall"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在攻击流量"
+
+  - id: "DP002"
+    check_name: "memory_usage"
+    name: "内存利用率过高"
+    severity: "critical"
+    vendors: ["dptech"]
+    device_types: ["fw_firewall"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查内存使用情况"
+
+  - id: "DP003"
+    check_name: "interface_status"
+    name: "存在 Down 状态接口"
+    severity: "warning"
+    vendors: ["dptech"]
+    device_types: ["fw_firewall"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查物理链路"

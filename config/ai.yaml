@@ -1,0 +1,10 @@
+# AI 大模型分析配置(系统设置页面自动保存)
+# 兼容所有 OpenAI Chat Completions 协议服务(DeepSeek / 智谱GLM / 通义千问 / Kimi / Ollama 等)
+# 修改后无需重启,下次巡检/手动分析即生效。
+enabled: true
+base_url: https://api.deepseek.com/v1
+api_key: ''
+model: deepseek-chat
+timeout: 120
+max_tokens: 4096
+temperature: 0.2

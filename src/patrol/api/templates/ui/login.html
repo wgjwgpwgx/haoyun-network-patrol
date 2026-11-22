@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>登录 - 昊云网络巡检助手</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link href="/static/vendor/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/vendor/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(900px 420px at 78% 12%, rgba(201, 162, 75, .14), transparent 60%),
+                radial-gradient(700px 500px at 18% 88%, rgba(64, 96, 200, .35), transparent 65%),
+                linear-gradient(135deg, #10173a 0%, #1b2a5e 55%, #24367a 100%);
+            font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .login-card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(6, 12, 40, .35), 0 1px 2px rgba(6, 12, 40, .2);
+        }
+        .login-logo { width: 72px; height: 72px; }
+        .login-title { font-size: 1.25rem; font-weight: 600; letter-spacing: 3px; color: #1e2a55; }
+        .login-tagline { font-size: 11px; letter-spacing: 4px; color: #c9a24b; }
+        .login-divider {
+            width: 44px; height: 3px; border-radius: 2px;
+            background: linear-gradient(90deg, #c9a24b, #dfc07a);
+        }
+        .form-label { font-size: .85rem; color: #5a6478; }
+        .form-control {
+            border-radius: 10px;
+            padding: .55rem .85rem;
+            border-color: #dfe4ef;
+        }
+        .form-control:focus {
+            border-color: #8fa3dd;
+            box-shadow: 0 0 0 .2rem rgba(43, 74, 168, .12);
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #2b4aa8, #1e357e);
+            border: none;
+            border-radius: 10px;
+            padding: .6rem 1rem;
+            font-weight: 500;
+            letter-spacing: 6px;
+            box-shadow: 0 3px 12px rgba(30, 53, 126, .35);
+        }
+        .btn-login:hover { background: linear-gradient(135deg, #243b8b, #182c66); }
+        .login-footer {
+            position: absolute; bottom: 18px; left: 0; right: 0;
+            text-align: center;
+            color: rgba(232, 217, 176, .55);
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body class="d-flex align-items-center justify-content-center position-relative">
+    <div class="container" style="max-width:400px">
+        <div class="card login-card">
+            <div class="card-body p-4 px-5">
+                <div class="text-center mb-4">
+                    <img src="/static/logo.png" class="login-logo mb-3" alt="昊云网络巡检助手">
+                    <h5 class="login-title mt-1 mb-1">昊云网络巡检助手</h5>
+                    <div class="login-tagline mb-3">HAOYUN NETWORK PATROL</div>
+                    <div class="login-divider mx-auto"></div>
+                </div>
+                {% if error %}
+                <div class="alert alert-danger py-2 small">{{ error }}</div>
+                {% endif %}
+                <form method="post" action="/ui/login">
+                    <div class="mb-3">
+                        <label class="form-label">用户名</label>
+                        <input type="text" name="username" class="form-control" required autofocus
+                               placeholder="默认 admin">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">密码</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-login btn-primary w-100">登 录</button>
+                </form>
+                <div class="text-center small mt-3" style="color:#8a93ab">
+                    首次使用默认账号 <strong>admin / admin123</strong><br>
+                    登录后请在「系统设置 → 账号安全」修改
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="login-footer d-none d-md-block">昊云网络巡检助手 · 让网络巡检更简单</div>
+</body>
+</html>

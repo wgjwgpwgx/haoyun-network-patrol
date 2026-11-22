@@ -1,0 +1,8 @@
+System Memory Statistic:
+System Total Memory(bytes): 1073741824
+Total Used Memory(bytes): 279134208
+Free Memory(bytes): 794607616
+Memory Used Rate: 26%
+
+Free pages: 148232
+watermarks : min 4096, lower 8192, low 12288, high 16384

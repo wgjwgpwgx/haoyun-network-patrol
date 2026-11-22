@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% block title %}系统设置 - 昊云网络巡检助手{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="bi bi-gear"></i> 系统设置</h5>
+    <span class="text-muted small">v{{ app_version }}</span>
+</div>
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if saved == 'ai' %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> AI 配置已保存,下次巡检/手动分析即生效。
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% elif saved == 'update' %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> 更新源地址已保存。
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <!-- 产品信息 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title mb-3"><i class="bi bi-info-circle"></i> 产品信息</h6>
+                <table class="table table-borderless table-sm mb-2" style="max-width:420px">
+                    <tr>
+                        <td class="text-muted" style="width:90px">产品名称</td>
+                        <td>{{ product_name }} <span class="text-muted small">({{ product_name_en }})</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">版本</td>
+                        <td>v{{ app_version }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">作者</td>
+                        <td><strong>{{ author }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">QQ</td>
+                        <td>{{ author_qq }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">许可协议</td>
+                        <td><span class="badge bg-secondary">{{ license_name }}</span></td>
+                    </tr>
+                </table>
+                <p class="small text-muted mb-2">
+                    本软件以 MIT 协议开源发布,<strong>允许二次开发、修改、分发与商业使用</strong>,
+                    保留上方版权与许可声明即可。
+                </p>
+                <button class="btn btn-outline-secondary btn-sm" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#licenseBox">
+                    <i class="bi bi-file-text"></i> 查看 {{ license_name }} 全文
+                </button>
+                <div class="collapse mt-3" id="licenseBox">
+                    <pre class="border rounded p-3 small bg-light mb-0"
+                         style="max-height:280px;overflow:auto;white-space:pre-wrap">{{ license_text }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 软件更新 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title mb-3"><i class="bi bi-arrow-up-circle"></i> 软件更新</h6>
+                <p class="small text-muted mb-3">
+                    当前版本 <strong>v{{ app_version }}</strong>。
+                    发现新版本后可一键自动更新:下载更新包 → 校验 → 程序自动重启完成升级,
+                    <strong>不会覆盖 config 与 output 里的数据</strong>,旧程序自动备份可回滚。
+                </p>
+                <form method="post" action="/ui/settings/update-url" class="row g-2 mb-3">
+                    <div class="col-8">
+                        <input type="text" name="update_url" class="form-control form-control-sm"
+                               value="{{ update_url }}" placeholder="更新清单地址(http/https 或本地文件路径)">
+                    </div>
+                    <div class="col-4">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-save"></i> 保存更新源
+                        </button>
+                    </div>
+                </form>
+                <div class="d-flex gap-2 flex-wrap">
+                    <form method="post" action="/ui/settings/check-update">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-search"></i> 检查更新
+                        </button>
+                    </form>
+                    <form method="post" action="/ui/settings/download-update">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-cloud-arrow-down"></i> 下载并安装
+                        </button>
+                    </form>
+                    {% if update_pending and frozen %}
+                    <form method="post" action="/ui/settings/install-update">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-arrow-repeat"></i> 重启并安装 v{{ update_pending.version }}
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% if not frozen %}
+                <div class="form-text mt-2">当前为源码运行模式,一键替换程序本体仅绿色包可用(下载校验仍可测试)。</div>
+                {% endif %}
+
+                {% if update_result %}
+                <div class="mt-3">
+                    {% if update_result.status == 'available' %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-stars"></i> 发现新版本!
+                        <div class="mt-1">v{{ update_result.current }} → <strong>v{{ update_result.latest }}</strong></div>
+                        {% if update_result.notes %}
+                        <div class="small mt-2">更新说明:{{ update_result.notes }}</div>
+                        {% endif %}
+                        {% if update_result.url %}
+                        <a class="btn btn-sm btn-warning mt-2" href="{{ update_result.url }}" target="_blank">
+                            <i class="bi bi-download"></i> 手动下载更新包
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% elif update_result.status == 'downloaded' %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-box-seam"></i> {{ update_result.message }}
+                        {% if update_result.notes %}
+                        <div class="small mt-2">更新说明:{{ update_result.notes }}</div>
+                        {% endif %}
+                        {% if update_pending and frozen %}
+                        <form method="post" action="/ui/settings/install-update" class="mt-2">
+                            <button type="submit" class="btn btn-warning btn-sm">
+                                <i class="bi bi-arrow-repeat"></i> 重启并安装
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% elif update_result.status == 'installing' %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-arrow-repeat"></i> {{ update_result.message }}
+                    </div>
+                    {% elif update_result.status == 'uptodate' %}
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle"></i> {{ update_result.message }}
+                    </div>
+                    {% elif update_result.status == 'unconfigured' %}
+                    <div class="alert alert-secondary mb-0">
+                        <i class="bi bi-info-circle"></i> {{ update_result.message }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> {{ update_result.message }}
+                    </div>
+                    {% endif %}
+                    {% if update_result.checked_at %}
+                    <div class="small text-muted mt-2">检查时间:{{ update_result.checked_at }}</div>
+                    {% endif %}
+                </div>
+                {% elif update_pending %}
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-box-seam"></i>
+                    已下载 v{{ update_pending.version }} 更新包({{ update_pending.downloaded_at[:16] }}),
+                    点击上方「重启并安装」完成升级。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 账号安全 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title mb-3"><i class="bi bi-shield-lock"></i> 账号安全</h6>
+                {% if account_msg %}
+                <div class="alert alert-success py-2 small"><i class="bi bi-check-circle"></i> {{ account_msg }}</div>
+                {% endif %}
+                {% if account_err %}
+                <div class="alert alert-danger py-2 small"><i class="bi bi-exclamation-triangle"></i> {{ account_err }}</div>
+                {% endif %}
+                <table class="table table-borderless table-sm mb-2" style="max-width:420px">
+                    <tr>
+                        <td class="text-muted" style="width:90px">认证状态</td>
+                        <td>
+                            {% if auth.mode == 'off' %}
+                            <span class="badge bg-secondary">已关闭</span>
+                            {% else %}
+                            <span class="badge bg-success">已启用</span>
+                            <span class="small text-muted">凭据来源:{{ auth.mode_label }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if auth.mode != 'off' %}
+                    <tr>
+                        <td class="text-muted">当前用户名</td>
+                        <td>{{ auth.username }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+                {% if auth.mode == 'file' %}
+                <form method="post" action="/ui/settings/account" class="row g-2" style="max-width:420px">
+                    <div class="col-12">
+                        <label class="form-label small">当前密码</label>
+                        <input type="password" name="current_password" class="form-control form-control-sm"
+                               required autocomplete="off">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">新用户名(留空不修改)</label>
+                        <input type="text" name="new_username" class="form-control form-control-sm"
+                               placeholder="{{ auth.username }}" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">新密码(留空不修改)</label>
+                        <input type="password" name="new_password" class="form-control form-control-sm"
+                               autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">确认新密码</label>
+                        <input type="password" name="new_password2" class="form-control form-control-sm"
+                               autocomplete="off">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-check-lg"></i> 保存修改
+                        </button>
+                        <a href="/ui/logout" class="btn btn-outline-secondary btn-sm ms-1">
+                            <i class="bi bi-box-arrow-right"></i> 退出登录
+                        </a>
+                    </div>
+                </form>
+                <div class="form-text">修改成功后所有已登录会话立即失效,需重新登录。首次默认账号 admin / admin123,请尽快修改。</div>
+                {% elif auth.mode == 'env' %}
+                <div class="alert alert-secondary py-2 small mb-0">
+                    当前为环境变量认证(PATROL_WEB_PASSWORD),请在启动环境中修改后重启。
+                </div>
+                {% else %}
+                <div class="alert alert-secondary py-2 small mb-0">
+                    认证已关闭(config/auth.yaml 中 enabled: false),仅建议本机/受信环境使用。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 大模型配置(API Key) -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="card-title mb-0"><i class="bi bi-robot"></i> AI 大模型分析(API Key)</h6>
+                    {% if ai_ready %}
+                    <span class="badge bg-success"><i class="bi bi-check-lg"></i> AI 分析已启用</span>
+                    {% else %}
+                    <span class="badge bg-secondary"><i class="bi bi-pause"></i> AI 分析未启用</span>
+                    {% endif %}
+                </div>
+
+                {% if ai_test %}
+                <div class="alert {{ 'alert-success' if ai_test.ok else 'alert-danger' }} py-2">
+                    {% if ai_test.ok %}<i class="bi bi-check-circle"></i>{% else %}
+                    <i class="bi bi-exclamation-triangle"></i>{% endif %} {{ ai_test.message }}
+                </div>
+                {% endif %}
+
+                <form method="post" action="/ui/settings/ai" class="row g-3" id="aiForm">
+                    <div class="col-md-3">
+                        <label class="form-label">厂商预设</label>
+                        <select id="vendorPreset" class="form-select">
+                            <option value="">-- 选择厂商自动填充 --</option>
+                            {% for group, items in llm_presets %}
+                            <optgroup label="{{ group }}">
+                                {% for p in items %}
+                                <option value="{{ p.id }}"
+                                        data-base-url="{{ p.base_url }}"
+                                        data-models="{{ p.models|join(',') }}"
+                                        data-key-url="{{ p.key_url }}"
+                                        data-note="{{ p.note }}"
+                                        {% if preset_matched == p.id %}selected{% endif %}>{{ p.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">接口地址(Base URL)</label>
+                        <input type="text" name="base_url" id="baseUrlInput" class="form-control"
+                               value="{{ ai.base_url or 'https://api.deepseek.com' }}"
+                               placeholder="https://api.deepseek.com">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">模型</label>
+                        <input type="text" name="model" id="modelInput" class="form-control"
+                               list="modelHints" value="{{ ai.model or 'deepseek-chat' }}"
+                               placeholder="deepseek-chat">
+                        <datalist id="modelHints"></datalist>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">API Key</label>
+                        <input type="password" name="api_key" class="form-control" autocomplete="off"
+                               value="" placeholder="{{ '已配置:' ~ ai_key_masked ~ ',留空保持不变' if ai_key_masked else 'sk-...' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">启用 AI 分析</label>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" name="enabled" id="aiEnabled"
+                                   {% if ai.enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="aiEnabled">开启</label>
+                        </div>
+                    </div>
+                    <div class="col-12 d-flex align-items-center gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> 保存配置
+                        </button>
+                        <button type="submit" class="btn btn-outline-primary" formaction="/ui/settings/test-ai">
+                            <i class="bi bi-plug"></i> 测试连通
+                        </button>
+                        <a id="keyApplyLink" href="https://platform.deepseek.com/api_keys" target="_blank"
+                           class="btn btn-outline-secondary">
+                            <i class="bi bi-key"></i> 申请 API Key
+                        </a>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text" id="presetNote">
+                            预设已覆盖 DeepSeek / 智谱 / 通义 / Kimi / 豆包 / 文心 / 星火 / 混元 / MiniMax / 百川 /
+                            硅基流动 / Ollama 本地 / OpenAI 兼容自定义,均为 OpenAI Chat Completions 协议,
+                            地址与模型可手改。"测试连通"直接验证 Key 是否可用(不保存)。
+                            {% if ai_env_override %}
+                            <span class="text-warning"><i class="bi bi-exclamation-triangle"></i>
+                                检测到 PATROL_AI_* 环境变量,运行时以环境变量为准。</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const presetSel = document.getElementById('vendorPreset');
+    const baseInput = document.getElementById('baseUrlInput');
+    const modelInput = document.getElementById('modelInput');
+    const keyLink = document.getElementById('keyApplyLink');
+    const noteBox = document.getElementById('presetNote');
+    const noteDefault = noteBox.innerHTML;
+
+    function fillHints(models) {
+        const dl = document.getElementById('modelHints');
+        dl.innerHTML = models.map(m => '<option value="' + m + '">').join('');
+    }
+
+    function applyPreset(id, overwriteModel) {
+        const opt = presetSel.querySelector('option[value="' + id + '"]');
+        if (!opt) return;
+        const models = (opt.dataset.models || '').split(',').filter(Boolean);
+        if (opt.dataset.baseUrl) baseInput.value = opt.dataset.baseUrl;
+        if (overwriteModel && models.length) modelInput.value = models[0];
+        fillHints(models);
+        if (opt.dataset.keyUrl) {
+            keyLink.href = opt.dataset.keyUrl;
+            keyLink.style.display = '';
+        } else {
+            keyLink.style.display = 'none';
+        }
+        noteBox.innerHTML = opt.dataset.note
+            ? ('<i class="bi bi-info-circle"></i> ' + opt.dataset.note) : noteDefault;
+    }
+
+    presetSel.addEventListener('change', function () {
+        applyPreset(this.value, true);
+    });
+
+    // 页面回显:按当前 base_url 反查预设,只补提示不动已填内容
+    if (presetSel.value) applyPreset(presetSel.value, false);
+})();
+</script>
+{% endblock %}

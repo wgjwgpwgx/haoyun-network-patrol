@@ -1,0 +1,86 @@
+# 锐捷 RGOS 交换机巡检规则
+
+rules:
+  - id: "RJ001"
+    check_name: "cpu_usage"
+    name: "CPU 利用率过高"
+    severity: "critical"
+    vendors: ["ruijie"]
+    device_types: ["rgos_switch"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在广播风暴或异常进程"
+
+  - id: "RJ002"
+    check_name: "memory_usage"
+    name: "内存利用率过高"
+    severity: "critical"
+    vendors: ["ruijie"]
+    device_types: ["rgos_switch"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在内存泄漏"
+
+  - id: "RJ003"
+    check_name: "interface_status"
+    name: "存在 Down 状态接口"
+    severity: "warning"
+    vendors: ["ruijie"]
+    device_types: ["rgos_switch"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "确认 Down 接口是否为预期状态"
+
+  - id: "RJ004"
+    check_name: "logbuffer"
+    name: "日志中存在告警"
+    severity: "warning"
+    vendors: ["ruijie"]
+    device_types: ["rgos_switch"]
+    metric: "error_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查告警日志内容"
+
+  - id: "RJ005"
+    check_name: "telnet_service"
+    name: "Telnet 服务已启用"
+    severity: "warning"
+    vendors: ["ruijie"]
+    device_types: ["rgos_switch"]
+    metric: "telnet_enabled"
+    operator: "true"
+    suggestion: "关闭 Telnet，使用 SSH 管理"
+
+  - id: "RJ006"
+    check_name: "snmp_community"
+    name: "SNMP 使用默认 Community"
+    severity: "critical"
+    vendors: ["ruijie"]
+    device_types: ["rgos_switch"]
+    metric: "has_dangerous"
+    operator: "true"
+    suggestion: "修改 SNMP Community 或使用 SNMPv3"
+
+  - id: "RJ007"
+    check_name: "vty_auth"
+    name: "VTY 未配置认证"
+    severity: "critical"
+    vendors: ["ruijie"]
+    device_types: ["rgos_switch"]
+    metric: "has_authentication"
+    operator: "false"
+    suggestion: "配置 VTY 认证"
+
+  - id: "RJ008"
+    check_name: "stp_status"
+    name: "生成树未启用"
+    severity: "critical"
+    vendors: ["ruijie"]
+    device_types: ["rgos_switch"]
+    metric: "stp_enabled"
+    operator: "false"
+    suggestion: "启用 spanning-tree"

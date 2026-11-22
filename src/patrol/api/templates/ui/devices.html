@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+{% block title %}设备管理 - 昊云网络巡检助手{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="bi bi-hdd-rack"></i> 设备管理</h5>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> 刷新</button>
+        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#scanModal"><i class="bi bi-radar"></i> 子网扫描</button>
+        <a href="/ui/devices/import" class="btn btn-outline-primary btn-sm"><i class="bi bi-file-earmark-arrow-up"></i> 批量导入</a>
+        <a href="/ui/devices/new" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> 新增设备</a>
+    </div>
+</div>
+
+<!-- 筛选栏 -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form class="row g-2 align-items-center" method="get" id="filterForm">
+            <div class="col-auto">
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="搜索名称或IP..." value="{{ q }}" style="width:200px">
+            </div>
+            <div class="col-auto">
+                <select name="vendor" class="form-select form-select-sm" style="width:140px">
+                    <option value="">全部厂商</option>
+                    {% for v in vendor_options %}
+                    <option value="{{ v.value }}" {{ 'selected' if vendor==v.value else '' }}>{{ v.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="customer" class="form-select form-select-sm" style="width:140px">
+                    <option value="">全部客户</option>
+                    {% for c in customers %}
+                    <option value="{{ c.name }}" {{ 'selected' if customer==c.name else '' }}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="enabled" class="form-select form-select-sm" style="width:100px">
+                    <option value="">全部状态</option>
+                    <option value="true" {{ 'selected' if enabled=='true' else '' }}>启用</option>
+                    <option value="false" {{ 'selected' if enabled=='false' else '' }}>停用</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i> 搜索</button>
+                <a href="/ui/devices" class="btn btn-sm btn-outline-secondary">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 批量操作栏 -->
+<div class="d-flex gap-2 mb-3" id="batchBar" style="display:none !important">
+    <span class="align-self-center text-muted" id="selectedCount">已选 0 台</span>
+    <button class="btn btn-sm btn-primary" onclick="batchPatrol()"><i class="bi bi-play-fill"></i> 批量巡检</button>
+    <button class="btn btn-sm btn-danger" onclick="batchDelete()"><i class="bi bi-trash"></i> 批量删除</button>
+</div>
+
+<!-- 设备表格 -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th style="width:40px"><input type="checkbox" id="selectAll" class="form-check-input"></th>
+                    <th style="cursor:pointer" onclick="sortTable(1)">设备名称 <i class="bi bi-arrow-down-up small"></i></th>
+                    <th style="cursor:pointer" onclick="sortTable(2)">管理 IP <i class="bi bi-arrow-down-up small"></i></th>
+                    <th>厂商</th>
+                    <th>设备类型</th>
+                    <th style="cursor:pointer" onclick="sortTable(5)">状态</th>
+                    <th>超时</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for d in devices_page %}
+            <tr>
+                <td><input type="checkbox" name="selected" value="{{ d.name }}" class="form-check-input device-cb" onchange="updateBatchBar()"></td>
+                <td>
+                    <strong>{{ d.name }}</strong>
+                    {% if d.customer %}<div class="small"><i class="bi bi-people"></i> {{ d.customer }}</div>{% endif %}
+                    <div class="text-muted small">端口:{{ d.port }} · {{ d.username }}</div>
+                </td>
+                <td>
+                    <a href="#" class="text-decoration-none device-detail-link" data-bs-toggle="modal" data-bs-target="#detailModal"
+                       data-name="{{ d.name }}" data-host="{{ d.host }}" data-vendor="{{ d.vendor }}"
+                       data-type="{{ d.device_type }}" data-port="{{ d.port }}" data-user="{{ d.username }}"
+                       data-customer="{{ d.customer or '未指定' }}"
+                       data-timeout="{{ d.timeout }}s / {{ d.command_timeout }}s"
+                       data-enabled="{{ 'true' if d.enabled else 'false' }}">
+                        <code>{{ d.host }}</code>
+                    </a>
+                </td>
+                <td><span class="badge bg-dark">{{ d.vendor }}</span></td>
+                <td>{{ d.device_type }}</td>
+                <td>
+                    {% if d.enabled %}
+                    <span class="badge rounded-pill" style="background:#52c41a;color:#fff">启用</span>
+                    {% else %}
+                    <span class="badge rounded-pill" style="background:#999;color:#fff">停用</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted small">{{ d.timeout }}s / {{ d.command_timeout }}s</td>
+                <td>
+                    <div class="btn-group">
+                        <a href="/ui/devices/{{ d.name|urlencode }}/edit" class="btn btn-sm btn-outline-primary" title="编辑"><i class="bi bi-pencil"></i></a>
+                        <form method="post" action="/ui/devices/{{ d.name|urlencode }}/toggle" style="display:inline">
+                            <button class="btn btn-sm btn-outline-warning" title="{{ '停用' if d.enabled else '启用' }}">
+                                <i class="bi bi-{{ 'pause' if d.enabled else 'play' }}"></i>
+                            </button>
+                        </form>
+                        <form method="post" action="/ui/tasks" style="display:inline">
+                            <input type="hidden" name="device_names" value="{{ d.name }}">
+                            <button class="btn btn-sm btn-outline-success" title="巡检"><i class="bi bi-play-fill"></i></button>
+                        </form>
+                        <form method="post" class="delete-form" action="/ui/devices/{{ d.name|urlencode }}/delete" style="display:inline" data-name="{{ d.name }}">
+                            <button class="btn btn-sm btn-outline-danger" title="删除"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if not devices_page %}
+    <div class="text-center text-muted py-4">暂无设备，点击"新增设备"添加</div>
+    {% endif %}
+</div>
+
+<!-- 分页 -->
+{% if total_pages > 1 %}
+<nav class="mt-3">
+    <ul class="pagination pagination-sm justify-content-center">
+        <li class="page-item {{ 'disabled' if page <= 1 }}">
+            <a class="page-link" href="?q={{ q }}&vendor={{ vendor }}&customer={{ customer }}&enabled={{ enabled }}&page={{ page-1 }}">上一页</a>
+        </li>
+        {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+        {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
+        <li class="page-item"><a class="page-link" href="?q={{ q }}&vendor={{ vendor }}&customer={{ customer }}&enabled={{ enabled }}&page={{ p }}">{{ p }}</a></li>
+        {% elif p == 4 or p == total_pages - 2 %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+        {% endfor %}
+        <li class="page-item {{ 'disabled' if page >= total_pages }}">
+            <a class="page-link" href="?q={{ q }}&vendor={{ vendor }}&customer={{ customer }}&enabled={{ enabled }}&page={{ page+1 }}">下一页</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+<!-- 设备详情弹窗 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-hdd-rack"></i> 设备详情</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted" style="width:100px">名称</td><td id="dName"></td></tr>
+                    <tr><td class="text-muted">归属客户</td><td id="dCustomer"></td></tr>
+                    <tr><td class="text-muted">IP</td><td id="dHost"></td></tr>
+                    <tr><td class="text-muted">厂商</td><td id="dVendor"></td></tr>
+                    <tr><td class="text-muted">设备类型</td><td id="dType"></td></tr>
+                    <tr><td class="text-muted">端口</td><td id="dPort"></td></tr>
+                    <tr><td class="text-muted">用户名</td><td id="dUser"></td></tr>
+                    <tr><td class="text-muted">超时</td><td id="dTimeout"></td></tr>
+                    <tr><td class="text-muted">状态</td><td id="dStatus"></td></tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">关闭</button>
+                <a id="dEditLink" href="#" class="btn btn-primary btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 批量删除表单 -->
+<form id="batchDeleteForm" method="post" action="/ui/devices/batch-delete" style="display:none"></form>
+<!-- 批量巡检表单 -->
+<form id="batchPatrolForm" method="post" action="/ui/tasks" style="display:none"></form>
+
+<!-- 子网扫描弹窗 -->
+<div class="modal fade" id="scanModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-radar"></i> 子网扫描发现</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 mb-3" id="scanInput">
+                    <div class="col-md-5">
+                        <label class="form-label small">网段(CIDR)</label>
+                        <input type="text" id="scanCidr" class="form-control form-control-sm"
+                               placeholder="如:192.168.0.0/24" value="">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">SNMP Community</label>
+                        <input type="text" id="scanCommunity" class="form-control form-control-sm"
+                               value="public">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary btn-sm w-100" id="btnScan"
+                                onclick="doScan()"><i class="bi bi-search"></i> 扫描</button>
+                    </div>
+                </div>
+                <div id="scanStatus" class="text-muted small mb-2"></div>
+                <div id="scanResults" style="display:none">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">归属客户</label>
+                            <select id="scanCustomer" class="form-select form-select-sm">
+                                <option value="">不指定</option>
+                                {% for c in customers %}<option value="{{ c.name }}">{{ c.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">SSH 用户名(可选)</label>
+                            <input type="text" id="scanUsername" class="form-control form-control-sm"
+                                   placeholder="留空用 SNMP">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">SSH 密码(可选)</label>
+                            <input type="password" id="scanPassword" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-success btn-sm w-100" onclick="importScanned()"
+                                    ><i class="bi bi-check-lg"></i> 导入选中</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead><tr>
+                                <th><input type="checkbox" id="scanCheckAll" checked onchange="document.querySelectorAll('.scan-cb').forEach(cb=>cb.checked=this.checked)"></th>
+                                <th>IP</th><th>厂商</th><th>类型</th><th>系统名</th><th>sysDescr 摘要</th>
+                            </tr></thead>
+                            <tbody id="scanTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全选/反选
+document.getElementById('selectAll').addEventListener('change', function() {
+    document.querySelectorAll('.device-cb').forEach(cb => cb.checked = this.checked);
+    updateBatchBar();
+});
+
+// 更新批量操作栏
+function updateBatchBar() {
+    const checked = document.querySelectorAll('.device-cb:checked');
+    const bar = document.getElementById('batchBar');
+    const count = document.getElementById('selectedCount');
+    if (checked.length > 0) {
+        bar.style.display = 'flex !important';
+        bar.style.display = 'flex';
+        count.textContent = '已选 ' + checked.length + ' 台';
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+// 获取选中的设备名
+function getSelected() {
+    return Array.from(document.querySelectorAll('.device-cb:checked')).map(cb => cb.value);
+}
+
+// 批量删除
+function batchDelete() {
+    const names = getSelected();
+    if (!confirm('确认删除选中的 ' + names.length + ' 台设备？')) return;
+    const form = document.getElementById('batchDeleteForm');
+    form.innerHTML = '';
+    names.forEach(n => {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'names'; input.value = n;
+        form.appendChild(input);
+    });
+    form.submit();
+}
+
+// 批量巡检
+function batchPatrol() {
+    const names = getSelected();
+    const form = document.getElementById('batchPatrolForm');
+    form.innerHTML = '';
+    names.forEach(n => {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'device_names'; input.value = n;
+        form.appendChild(input);
+    });
+    form.submit();
+}
+
+// 显示设备详情(data-* 属性读取,避免把设备名内插进 JS 字符串)
+document.querySelectorAll('.device-detail-link').forEach(el => {
+    el.addEventListener('click', () => {
+        const d = el.dataset;
+        document.getElementById('dName').textContent = d.name;
+        document.getElementById('dCustomer').textContent = d.customer;
+        document.getElementById('dHost').textContent = d.host;
+        document.getElementById('dVendor').textContent = d.vendor;
+        document.getElementById('dType').textContent = d.type;
+        document.getElementById('dPort').textContent = d.port;
+        document.getElementById('dUser').textContent = d.user;
+        document.getElementById('dTimeout').textContent = d.timeout;
+        document.getElementById('dStatus').innerHTML = d.enabled === 'true'
+            ? '<span class="badge" style="background:#52c41a">启用</span>'
+            : '<span class="badge" style="background:#999">停用</span>';
+        document.getElementById('dEditLink').href = '/ui/devices/' + encodeURIComponent(d.name) + '/edit';
+    });
+});
+
+// 删除确认
+
+// 子网扫描(P1 第一批 ①)
+async function doScan() {
+    const cidr = document.getElementById('scanCidr').value.trim();
+    const community = document.getElementById('scanCommunity').value.trim();
+    if (!cidr) { alert('请输入网段'); return; }
+    const btn = document.getElementById('btnScan');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 扫描中…';
+    document.getElementById('scanStatus').textContent = '正在扫描 ' + cidr + '(约 10-30 秒)…';
+    document.getElementById('scanResults').style.display = 'none';
+    try {
+        const r = await (await fetch('/ui/devices/scan', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'cidr=' + encodeURIComponent(cidr) + '&community=' + encodeURIComponent(community)
+        })).json();
+        if (!r.ok) { alert('扫描失败:' + r.error); return; }
+        document.getElementById('scanStatus').textContent =
+            '扫描完成:发现 ' + r.total + ' 台存活设备';
+        const tbody = document.getElementById('scanTableBody');
+        tbody.innerHTML = r.devices.map((d, i) => '<tr>' +
+            '<td><input type="checkbox" class="scan-cb" checked data-idx="' + i + '"></td>' +
+            '<td><code>' + d.host + '</code></td>' +
+            '<td>' + (d.vendor || '<span class="text-muted">未识别</span>') + '</td>' +
+            '<td>' + (d.device_type || '-') + '</td>' +
+            '<td>' + (d.sysname || '-') + '</td>' +
+            '<td class="text-muted small">' + (d.sysdescr || '').substring(0, 50) + '</td></tr>'
+        ).join('');
+        window._scanData = r.devices;
+        document.getElementById('scanResults').style.display = '';
+    } catch (e) { alert('请求失败:' + e); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-search"></i> 扫描'; }
+}
+
+async function importScanned() {
+    const checked = document.querySelectorAll('.scan-cb:checked');
+    if (!checked.length) { alert('请勾选要导入的设备'); return; }
+    const devices = Array.from(checked).map(cb => window._scanData[parseInt(cb.dataset.idx)]);
+    const body = new URLSearchParams({
+        devices_json: JSON.stringify(devices),
+        customer: document.getElementById('scanCustomer').value,
+        username: document.getElementById('scanUsername').value,
+        password: document.getElementById('scanPassword').value,
+    });
+    const r = await (await fetch('/ui/devices/scan-import', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body})).json();
+    if (r.ok) {
+        alert('成功导入 ' + r.imported + ' 台设备' +
+            (r.errors.length ? '\n跳过: ' + r.errors.join('; ') : ''));
+        location.reload();
+    } else { alert('导入失败:' + r.error); }
+}
+
+// 巡检前预检(P1 第一批 ②)
+document.querySelectorAll('form[action="/ui/tasks"]').forEach(f => {
+    f.addEventListener('submit', async (e) => {
+        // 不阻止提交,先做预检显示结果
+        const names = Array.from(f.querySelectorAll('input[name=device_names]:checked'))
+            .map(cb => cb.value);
+        if (!names.length) return;
+        const body = 'device_names=' + encodeURIComponent(names.join(','));
+        const r = await (await fetch('/ui/tasks/precheck', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body})).json();
+        if (r.unreachable > 0) {
+            const unreachable = r.results.filter(x => !x.reachable)
+                .map(x => x.name + '(' + x.reason + ')').join('\n');
+            if (!confirm('以下 ' + r.unreachable + ' 台设备不可达:\n' + unreachable +
+                '\n\n是否继续巡检?(不可达设备将跳过)')) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+
+// 原有代码
+document.querySelectorAll('form.delete-form').forEach(f => {
+    f.addEventListener('submit', e => {
+        if (!confirm('确认删除设备 ' + f.dataset.name + ' ?')) e.preventDefault();
+    });
+});
+
+// 表格排序
+let sortDir = {};
+function sortTable(col) {
+    const tbody = document.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    sortDir[col] = !sortDir[col];
+    rows.sort((a, b) => {
+        const va = a.cells[col].textContent.trim();
+        const vb = b.cells[col].textContent.trim();
+        return sortDir[col] ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    rows.forEach(r => tbody.appendChild(r));
+}
+</script>
+{% endblock %}

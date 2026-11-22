@@ -1,0 +1,5 @@
+System memory statistics:
+  Total: 2097152K bytes
+  Used:  734003K bytes
+  Free:  1363149K bytes
+  Used Rate: 35%

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ report.title }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f5f5; color: #333; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; color: #1a1a1a; }
+        .meta { text-align: center; color: #666; margin-bottom: 24px; font-size: 14px; }
+        .summary-bar { display: flex; gap: 16px; justify-content: center; margin-bottom: 24px; }
+        .summary-card { background: #fff; border-radius: 8px; padding: 16px 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-width: 120px; }
+        .summary-card .num { font-size: 28px; font-weight: bold; }
+        .summary-card .label { font-size: 13px; color: #666; margin-top: 4px; }
+        .num-pass { color: #52c41a; }
+        .num-fail { color: #ff4d4f; }
+        .num-unknown { color: #faad14; }
+        .device-card { background: #fff; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        .device-header { background: #fafafa; padding: 16px 20px; border-bottom: 1px solid #eee; }
+        .device-header h2 { font-size: 18px; color: #1a1a1a; }
+        .device-header .info { font-size: 13px; color: #666; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #fafafa; text-align: left; padding: 10px 16px; font-size: 13px; color: #666; border-bottom: 1px solid #eee; }
+        td { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; vertical-align: top; }
+        tr:last-child td { border-bottom: none; }
+        .status { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-pass { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .status-fail { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+        .status-unknown { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
+        .severity { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-left: 6px; }
+        .severity-critical { background: #ff4d4f; color: #fff; }
+        .severity-warning { background: #faad14; color: #fff; }
+        .severity-info { background: #1890ff; color: #fff; }
+        .suggestion { color: #ff4d4f; font-size: 12px; margin-top: 4px; padding: 6px 10px; background: #fff2f0; border-radius: 4px; border-left: 3px solid #ff4d4f; }
+        .raw-row > td { background: #fafbfc; padding: 0 16px 12px; border-bottom: 1px solid #f0f0f0; }
+        .raw-block { margin-top: 8px; border: 1px solid #e2e8f0; border-left: 3px solid #1B5FA8; border-radius: 4px; background: #f6f8fb; overflow: hidden; }
+        .raw-head { font-size: 12px; color: #66788C; padding: 6px 12px; border-bottom: 1px dashed #e2e8f0; background: #eef3f9; }
+        .raw-head code { color: #123F72; font-family: Consolas, "Courier New", monospace; }
+        .raw-output { display: block; margin: 0; padding: 10px 12px; font-family: Consolas, "Courier New", monospace; font-size: 12px; line-height: 1.55; color: #22303F; white-space: pre-wrap; word-break: break-word; tab-size: 4; max-height: 320px; overflow: auto; }
+        .footer { text-align: center; color: #999; font-size: 12px; margin-top: 32px; padding: 16px; }
+        .ai-card { background: linear-gradient(135deg, #f7f9ff 0%, #f2f6ff 100%); border: 1px solid #dbe4f8; border-radius: 8px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(43,74,168,0.08); }
+        .ai-card h2 { font-size: 17px; color: #1e357e; margin-bottom: 4px; }
+        .ai-card .ai-meta { font-size: 12px; color: #8a93a8; margin-bottom: 12px; }
+        .ai-headline { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+        .ai-score { background: #fff; border: 1px solid #dbe4f8; border-radius: 8px; padding: 8px 18px; text-align: center; }
+        .ai-score .num { font-size: 30px; font-weight: bold; color: #2b4aa8; }
+        .ai-score .label { font-size: 12px; color: #666; }
+        .risk-low { background:#52c41a; } .risk-medium { background:#faad14; } .risk-high { background:#ff7a45; } .risk-critical { background:#ff4d4f; }
+        .risk-badge { display: inline-block; color: #fff; padding: 6px 16px; border-radius: 6px; font-size: 14px; font-weight: bold; }
+        .ai-summary { font-size: 14px; line-height: 1.8; color: #333; background: #fff; border-radius: 6px; padding: 12px 16px; border: 1px solid #e8edf8; }
+        .ai-finding { background: #fff; border: 1px solid #e8edf8; border-left: 4px solid #faad14; border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; font-size: 13px; }
+        .ai-finding.sev-high { border-left-color: #ff4d4f; }
+        .ai-finding.sev-low { border-left-color: #1890ff; }
+        .ai-finding .title { font-weight: bold; color: #1a1a1a; }
+        .ai-finding .rec { color: #1e6f3f; margin-top: 4px; }
+        .ai-list { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.9; color: #333; }
+        .ai-dev-assess { margin-top: 8px; font-size: 13px; color: #1e357e; background: #f2f6ff; border-left: 3px solid #2b4aa8; padding: 6px 10px; border-radius: 4px; line-height: 1.7; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>{{ report.title }}</h1>
+    <p class="meta">生成时间: {{ report.generated_at.strftime('%Y-%m-%d %H:%M:%S') }} | 设备数量: {{ report.total_devices }}{% if overall and overall.overall is not none %} | 全网健康分: <b>{{ overall.overall }}({{ overall.overall_grade }})</b>{% endif %}</p>
+
+    <div class="summary-bar">
+        <div class="summary-card">
+            <div class="num">{{ report.devices | length }}</div>
+            <div class="label">设备总数</div>
+        </div>
+        {% set total_pass = report.devices | map(attribute='pass_count') | sum %}
+        {% set total_fail = report.devices | map(attribute='fail_count') | sum %}
+        {% set total_unknown = report.devices | map(attribute='unknown_count') | sum %}
+        <div class="summary-card">
+            <div class="num num-pass">{{ total_pass }}</div>
+            <div class="label">PASS</div>
+        </div>
+        <div class="summary-card">
+            <div class="num num-fail">{{ total_fail }}</div>
+            <div class="label">FAIL</div>
+        </div>
+        <div class="summary-card">
+            <div class="num num-unknown">{{ total_unknown }}</div>
+            <div class="label">UNKNOWN</div>
+        </div>
+    </div>
+
+    {% if report.ai_analysis %}
+    {% set ai = report.ai_analysis %}
+    <div class="ai-card">
+        <h2>AI 综合分析(结合设备原始输出)</h2>
+        <div class="ai-meta">
+            巡检结果与设备原始命令输出整体融合分析生成
+            {% if ai.meta %}· 模型 {{ ai.meta.model }} · {{ ai.meta.analyzed_at[:19].replace('T',' ') }}{% endif %}
+        </div>
+        <div class="ai-headline">
+            <div class="ai-score">
+                <div class="num">{{ ai.health_score }}</div>
+                <div class="label">健康评分</div>
+            </div>
+            <div>
+                <span class="risk-badge risk-{{ ai.overall_risk }}">
+                    {% if ai.overall_risk == 'low' %}风险等级：低{% elif ai.overall_risk == 'medium' %}风险等级：中{% elif ai.overall_risk == 'high' %}风险等级：高{% else %}风险等级：严重{% endif %}
+                </span>
+            </div>
+        </div>
+        {% if ai.executive_summary %}
+        <div class="ai-summary">{{ ai.executive_summary }}</div>
+        {% endif %}
+        {% if ai.device_assessments %}
+        <h3 style="font-size:14px;color:#1e357e;margin:14px 0 8px">分设备综合评估</h3>
+        {% for a in ai.device_assessments %}
+        <div class="ai-finding sev-low">
+            <span class="title">{{ a.device }}</span>
+            <div style="color:#333;margin-top:3px">{{ a.assessment }}</div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% if ai.key_findings %}
+        <h3 style="font-size:14px;color:#1e357e;margin:14px 0 8px">关键发现</h3>
+        {% for f in ai.key_findings %}
+        <div class="ai-finding sev-{{ f.severity }}">
+            <span class="title">{{ f.device }} · {{ f.issue }}</span>
+            {% if f.impact %}<div style="color:#666;margin-top:3px">影响：{{ f.impact }}</div>{% endif %}
+            {% if f.recommendation %}<div class="rec">建议：{{ f.recommendation }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% if ai.recommendations %}
+        <h3 style="font-size:14px;color:#1e357e;margin:14px 0 8px">处置建议</h3>
+        <ol class="ai-list">
+            {% for r in ai.recommendations %}<li>{{ r }}</li>{% endfor %}
+        </ol>
+        {% endif %}
+        {% if ai.maintenance_suggestions %}
+        <h3 style="font-size:14px;color:#1e357e;margin:14px 0 8px">中长期优化建议</h3>
+        <ul class="ai-list">
+            {% for s in ai.maintenance_suggestions %}<li>{{ s }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if exec_summary %}
+    <div class="device-card" style="padding:14px 20px;border-left:4px solid #1B5FA8">
+        <p style="margin:0;font-size:15px;line-height:1.8;color:#243b55">
+            <i class="bi bi-lightbulb" style="color:#faad14"></i>
+            <b>管理层摘要:</b>{{ exec_summary }}</p>
+    </div>
+    {% endif %}
+
+    {% if pie_svg %}
+    <div class="device-card" style="padding:12px 16px;display:flex;gap:24px;align-items:center;justify-content:center">
+        <div><h2 style="font-size:15px;margin:0 0 6px">巡检结果分布</h2>{{ pie_svg | safe }}</div>
+    </div>
+    {% endif %}
+
+    {% if topology_svg %}
+    <div class="device-card" style="padding:16px">
+        <h2 style="font-size:18px;margin:0 0 8px">网络拓扑(LLDP 邻居)</h2>
+        <p style="color:#888;font-size:12px;margin:0 0 12px">
+            蓝色=本次巡检设备,灰色=邻居设备(未巡检),红色=存在异常项;连线标注本地口与对端口。</p>
+        {{ topology_svg | safe }}
+    </div>
+    {% endif %}
+
+    {% for device in devices %}    <div class="device-card">
+        <div class="device-header">
+            <h2>{{ device.asset.name }}</h2>
+            <div class="info">
+                {% set preds = predictions.get(device.asset.name) %}
+                {% if preds %}
+                <div style="margin:4px 0">
+                {% for check, p in preds.items() %}
+                    {% if p.will_exceed and p.days_to_exceed > 0 %}
+                    <span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:12px">
+                        ⚠ {{ check }}: 当前 {{ p.current }}%,趋势上升,预测约 {{ p.days_to_exceed }} 天后超 {{ p.threshold }}%</span>
+                    {% elif p.will_exceed and p.days_to_exceed == 0 %}
+                    <span style="background:#f8d7da;color:#721c24;padding:2px 8px;border-radius:4px;font-size:12px">
+                        ⚠ {{ check }}: 已超阈值 {{ p.threshold }}%</span>
+                    {% endif %}
+                {% endfor %}
+                </div>
+                {% endif %}
+                {% set h = scoring.get(device.asset.name) %}
+                {% if h %}健康分: <b style="color:{% if h.score >= 90 %}#52c41a{% elif h.score >= 60 %}#faad14{% else %}#ff4d4f{% endif %}">{{ h.score }}({{ h.grade }})</b>{% if h.veto %} <span style="color:#ff4d4f">[严重告警降档]</span>{% endif %} | {% endif %}
+                {% if device.asset.customer %}归属: {{ device.asset.customer }} | {% endif %}
+                {{ device.asset.host }} |
+                {{ device.model or '未知型号' }} |
+                {{ device.software_version or '未知版本' }} |
+                运行时间: {{ device.uptime or '未知' }} |
+                {{ device.summary }}
+            </div>
+            {% if report.ai_analysis and report.ai_analysis.device_assessments %}
+            {% set da = report.ai_analysis.device_assessments | selectattr('device', 'equalto', device.asset.name) | list %}
+            {% if da %}<div class="ai-dev-assess">AI 评估:{{ da[0].assessment }}</div>{% endif %}
+            {% endif %}
+        </div>
+        {% set ch = device_charts.get(device.asset.name) %}
+        {% if ch %}
+        <div style="display:flex;gap:12px;flex-wrap:wrap;padding:6px 0">
+            {% if ch.bars %}<div>{{ ch.bars | safe }}</div>{% endif %}
+            {% if ch.trend_cpu %}<div>{{ ch.trend_cpu | safe }}</div>{% endif %}
+            {% if ch.trend_mem %}<div>{{ ch.trend_mem | safe }}</div>{% endif %}
+        </div>
+        {% endif %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:120px">检查项</th>
+                    <th style="width:100px">状态</th>
+                    <th>结果</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in device.check_items %}
+                <tr>
+                    <td><strong>{{ item.category }}</strong></td>
+                    <td>
+                        {% if item.status == CheckStatus.PASS %}
+                        <span class="status status-pass">PASS</span>
+                        {% elif item.status == CheckStatus.FAIL %}
+                        <span class="status status-fail">FAIL</span>
+                        {% else %}
+                        <span class="status status-unknown">UNKNOWN</span>
+                        {% endif %}
+                        {% if item.details.get('severity') %}
+                        <span class="severity severity-{{ item.details.severity }}">{% if item.details.severity == 'critical' %}严重{% elif item.details.severity == 'warning' %}警告{% elif item.details.severity == 'info' %}提示{% else %}{{ item.details.severity }}{% endif %}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ item.message }}
+                        {% if item.details.get('suggestion') %}
+                        <div class="suggestion">💡 {{ item.details.suggestion }}</div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if item.raw_output %}
+                <tr class="raw-row">
+                    <td colspan="3">
+                        <div class="raw-block">
+                            <div class="raw-head">原始输出{% if item.command %} · 执行命令 <code>{{ item.command }}</code>{% endif %}</div>
+                            <pre class="raw-output">{{ item.raw_output }}</pre>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    {% if report.devices | length == 0 %}
+    <div class="device-card">
+        <div class="device-header">
+            <h2>无巡检数据</h2>
+        </div>
+        <p style="padding: 20px; color: #999;">未采集到任何设备数据。</p>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        巡检助手 v0.1.0 | 报告中的敏感信息已自动脱敏
+    </div>
+</div>
+</body>
+</html>

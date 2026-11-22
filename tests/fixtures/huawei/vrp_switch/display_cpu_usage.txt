@@ -1,0 +1,10 @@
+CPU Usage Stat. Cycle: 10 (Second)
+CPU Usage Stat. Time : 2026‑09‑21 15:22:46
+Control Plane
+CPU Usage: 14.3%   Max: 72.6%
+User:7.2%   System:6.8%   SoftIrq:0.3%   HardIrq:0.0%  Idle: 85.7%
+CPU utilization for ten seconds:14.3%  one minute:13.7%  five minutes:12.1%
+
+Data Plane
+CPU Usage:0.0%   Max:6.1%
+CPU utilization for ten seconds:0.0%  one minute:0.0%  five minutes:0.0%

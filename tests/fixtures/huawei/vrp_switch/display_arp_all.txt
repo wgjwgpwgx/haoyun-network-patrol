@@ -1,0 +1,6 @@
+  IP ADDRESS      MAC ADDRESS     EXPIRE(M) TYPE  INTERFACE  VPN-INSTANCE
+                                          VLAN/CEVLAN(S) SG/PVC(P) PVC(P)
+  192.168.10.2      04f9-38xx-xxxx            I -    Vlanif10
+  192.168.10.5      04f9-38xx-xxxx  12        D AE0  GE0/0/1
+  ...
+  Total:1247

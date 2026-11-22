@@ -1,0 +1,5 @@
+%2026‑09‑21T14:18:22.412 HW_SW_CORE_02 %%01SHELL/6/SHELL_CMD(l):CID=0x80800000;User=admin,IP=192.168.100.10,Terminal=VTY0,Command=display cpu‑usage.
+%2026‑09‑21T13:42:10.105 HW_SW_CORE_02 %%01IFNET/4/LINK_STATE(l):CID=0x80810300;The line‑protocol status on interface GigabitEthernet0/0/2 has changed to UP.
+%2026‑09‑21T13:41:48.331 HW_SW_CORE_02 %%01IFNET/4/LINK_STATE(l):CID=0x80810300;The line‑protocol status on interface GigabitEthernet0/0/2 has changed to DOWN.
+%2026‑09‑20T22:05:16.227 HW_SW_CORE_02 %%01OSPF/6/NBR_CHANGE(l):CID=0x808204c3;Neighbor changes event: neighbor status changed.(ProcessId=1,NbrIpAddr=192.168.160.1,NbrEvent=HelloReceived,NbrPreviousState=Init,NbrCurrentState=2‑Way)
+%2026‑09‑20T10:12:03.044 HW_SW_CORE_02 %%01SEC/6/LOGIN_SUCCEED(l):CID=0x80830100;User admin login succeeded through SSH.

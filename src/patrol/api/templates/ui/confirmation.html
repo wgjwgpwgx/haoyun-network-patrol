@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>巡检结果确认单</title>
+    <style>
+        @page { size: A4; margin: 15mm; }
+        @media print {
+            body { margin: 0; padding: 0; }
+            .no-print { display: none !important; }
+        }
+        body { font-family: "Microsoft YaHei", SimSun, sans-serif; font-size: 12px; color: #333; margin: 20px auto; max-width: 700px; }
+        h2 { text-align: center; font-size: 20px; margin: 0 0 5px; }
+        .meta { text-align: center; color: #666; font-size: 11px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #555; padding: 5px 8px; text-align: left; }
+        th { background: #f0f0f0; font-weight: bold; text-align: center; }
+        .pass { color: #1a7d1a; font-weight: bold; }
+        .fail { color: #c41e1e; font-weight: bold; }
+        .unknown { color: #b8860b; font-weight: bold; }
+        .summary { margin: 15px 0; padding: 8px 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; }
+        .sign-area { margin-top: 30px; }
+        .sign-row { display: flex; justify-content: space-between; gap: 40px; margin-bottom: 25px; }
+        .sign-box { flex: 1; border-bottom: 1px solid #333; padding: 5px 0; text-align: center; }
+        .sign-label { font-size: 11px; color: #666; margin-bottom: 20px; }
+        .stamp-row { display: flex; justify-content: space-between; gap: 60px; margin-top: 40px; }
+        .stamp-box { flex: 1; height: 80px; border: 1px dashed #999; display: flex; align-items: center; justify-content: center; color: #999; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <h2>网络设备巡检结果确认单</h2>
+    <div class="meta">
+        客户:{{ customer or '—' }} &nbsp;|&nbsp;
+        巡检日期:{{ date }} &nbsp;|&nbsp;
+        报告编号:{{ report_no }}
+    </div>
+
+    <div class="summary">
+        <b>巡检结果:</b>
+        共巡检 {{ total }} 台设备;
+        <span class="pass">通过 {{ pass_count }} 台</span>,
+        <span class="fail">异常 {{ fail_count }} 台</span>,
+        <span class="unknown">待确认 {{ unknown_count }} 台</span>。
+        {% if exec_summary %}<br><b>摘要:</b>{{ exec_summary }}{% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:30px">序号</th>
+                <th>设备名称</th>
+                <th>管理 IP</th>
+                <th>型号</th>
+                <th style="width:60px">结果</th>
+                <th>异常摘要</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for d in devices %}
+            <tr>
+                <td style="text-align:center">{{ loop.index }}</td>
+                <td>{{ d.name }}</td>
+                <td>{{ d.host }}</td>
+                <td>{{ d.model or '—' }}</td>
+                <td style="text-align:center">
+                    {% if d.status == 'PASS' %}
+                    <span class="pass">✔ 通过</span>
+                    {% elif d.status == 'FAIL' %}
+                    <span class="fail">✘ 异常</span>
+                    {% else %}
+                    <span class="unknown">? 待确认</span>
+                    {% endif %}
+                </td>
+                <td class="{{ 'fail' if d.status == 'FAIL' else '' }}" style="font-size:11px">
+                    {{ d.fail_summary or '—' }}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="sign-area">
+        <div class="sign-row">
+            <div>
+                <div class="sign-box"></div>
+                <div class="sign-label">巡检工程师签字</div>
+            </div>
+            <div>
+                <div class="sign-box"></div>
+                <div class="sign-label">日期</div>
+            </div>
+            <div>
+                <div class="sign-box"></div>
+                <div class="sign-label">甲方接收人签字</div>
+            </div>
+            <div>
+                <div class="sign-box"></div>
+                <div class="sign-label">日期</div>
+            </div>
+        </div>
+        <div class="stamp-row">
+            <div class="stamp-box">乙方(盖章)</div>
+            <div class="stamp-box">甲方(盖章)</div>
+        </div>
+    </div>
+
+    <div class="no-print" style="margin-top:20px;text-align:center">
+        <button onclick="window.print()" style="padding:8px 24px;font-size:14px;cursor:pointer">
+            🖨️ 打印此确认单</button>
+    </div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+Huawei Versatile Routing Platform Software
+VRP (R) software, Version 5.170 (S5735‑S48P4X V500R019C10SPC500)
+Copyright (C) 2003‑2025 Huawei Technologies Co., Ltd.
+HUAWEI S5735‑S48P4X uptime is 35 weeks, 4 days, 22 hours, 13 minutes
+System restart time:2025‑01‑12 09:26:00
+System version: V500R019C10SPC500
+Patch Version: V500R019SPH012
+Slot 0: S5735‑S48P4X
+    Main Board Version  :VER.A
+    Main Board Serial No:2102354835106F000127
+    POE Board Version   :VER.B
+    POE Board Serial No :2102354835106F000127

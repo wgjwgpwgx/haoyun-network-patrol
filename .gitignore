@@ -1,0 +1,27 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+output/
+build_log.txt
+.venv/
+venv/
+*.log
+
+# 运行时数据(巡检历史库/知识库,首跑自动生成,内含环境数据勿入库)
+data/
+
+# Web 登录凭据(首跑自动播种 admin/admin123,含实例专属 secret,勿入库)
+config/auth.yaml
+
+# 本地工具配置
+.zcode/
+.idea/
+.vscode/

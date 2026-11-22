@@ -1,0 +1,131 @@
+# H3C S7506E-V 巡检规则
+# 基于真实设备回显格式编写
+
+rules:
+  - id: "S001"
+    check_name: "cpu_usage"
+    name: "CPU 利用率过高"
+    description: "CPU 利用率超过阈值"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在广播风暴、环路或攻击流量"
+
+  - id: "S002"
+    check_name: "memory_usage"
+    name: "内存利用率过高"
+    description: "内存利用率超过阈值"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在内存泄漏，清理不必要的缓存"
+
+  - id: "S003"
+    check_name: "board_status"
+    name: "板卡状态异常"
+    description: "存在非 Master/Slave/Normal 状态的板卡"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查异常板卡是否需要更换"
+
+  - id: "S004"
+    check_name: "fan_status"
+    name: "风扇异常"
+    description: "风扇状态非 Normal"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查风扇模块是否需要更换"
+
+  - id: "S005"
+    check_name: "power_status"
+    name: "电源异常"
+    description: "电源状态非 Normal"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查电源模块是否正常供电"
+
+  - id: "S006"
+    check_name: "l3_interface"
+    name: "三层虚接口 Down"
+    description: "存在 Down 状态的 Vlan-interface"
+    severity: "warning"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查对应 VLAN 是否有活跃端口，确认接口是否预期 Down"
+
+  - id: "S007"
+    check_name: "logbuffer"
+    name: "日志中存在告警"
+    description: "日志缓冲区中存在 severity ≤ 3 的告警日志"
+    severity: "warning"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "error_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查告警日志内容，排查硬件或协议故障"
+
+  - id: "S008"
+    check_name: "telnet_service"
+    name: "Telnet 服务已启用"
+    description: "设备开启了 Telnet 服务"
+    severity: "warning"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "telnet_enabled"
+    operator: "true"
+    suggestion: "关闭 Telnet 服务，仅使用 SSH 管理"
+
+  - id: "S009"
+    check_name: "snmp_community"
+    name: "SNMP 使用默认 Community"
+    description: "SNMP 使用 public/private 等默认 Community"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "has_dangerous"
+    operator: "true"
+    suggestion: "修改 SNMP Community 为复杂字符串，或使用 SNMPv3"
+
+  - id: "S010"
+    check_name: "vty_auth"
+    name: "VTY 线路未配置认证"
+    description: "VTY 未启用 scheme 认证"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "has_authentication"
+    operator: "false"
+    suggestion: "配置 VTY 认证：authentication-mode scheme"
+
+  - id: "S011"
+    check_name: "stp_status"
+    name: "生成树未启用"
+    description: "设备未启用生成树协议"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["s7506e"]
+    metric: "stp_enabled"
+    operator: "false"
+    suggestion: "启用生成树协议：stp enable"

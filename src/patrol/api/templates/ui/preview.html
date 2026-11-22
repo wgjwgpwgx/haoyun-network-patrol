@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+{% block title %}报告预览 - {{ data.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        .sidebar { display: none !important; }
+        .main-content { padding: 0 !important; }
+        body { background: #fff !important; }
+        .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+        .collapse { display: block !important; }
+    }
+    .risk-critical { border-left: 4px solid #ff4d4f; }
+    .risk-warning { border-left: 4px solid #faad14; }
+    .risk-info { border-left: 4px solid #1890ff; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .summary-item { text-align: center; padding: 16px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .summary-item .num { font-size: 28px; font-weight: bold; }
+    .summary-item .label { font-size: 12px; color: #888; margin-top: 4px; }
+    .device-header { cursor: pointer; }
+    .device-header:hover { background: #f8f9fa; }
+    .raw-row > td { background: #fafbfc; padding: 0 16px 12px; }
+    .raw-block { margin-top: 8px; border: 1px solid #e2e8f0; border-left: 3px solid #1B5FA8; border-radius: 4px; background: #f6f8fb; overflow: hidden; }
+    .raw-head { font-size: 12px; color: #66788C; padding: 6px 12px; border-bottom: 1px dashed #e2e8f0; background: #eef3f9; }
+    .raw-head code { color: #123F72; font-family: Consolas, "Courier New", monospace; }
+    .raw-output { display: block; margin: 0; padding: 10px 12px; font-family: Consolas, "Courier New", monospace; font-size: 12px; line-height: 1.55; color: #22303F; white-space: pre-wrap; word-break: break-word; tab-size: 4; max-height: 320px; overflow: auto; }
+    .ai-card { background: linear-gradient(135deg, #f7f9ff 0%, #f2f6ff 100%); border: 1px solid #dbe4f8; }
+    .ai-score { background: #fff; border: 1px solid #dbe4f8; border-radius: 10px; padding: 10px 22px; text-align: center; }
+    .ai-score .num { font-size: 32px; font-weight: 700; color: #2b4aa8; }
+    .ai-score .label { font-size: 12px; color: #8a93a8; }
+    .risk-low { background: #4caf6e; } .risk-medium { background: #e0a63a; } .risk-high { background: #e4693f; } .risk-critical { background: #e4565e; }
+    .risk-badge { display: inline-block; color: #fff; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+    .ai-finding { background: #fff; border: 1px solid #e8edf8; border-left: 4px solid #e0a63a; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+    .ai-finding.sev-high { border-left-color: #e4565e; }
+    .ai-finding.sev-low { border-left-color: #4a90d9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 no-print">
+    <h5 class="mb-0"><i class="bi bi-eye"></i> 报告预览</h5>
+    <div class="d-flex gap-2">
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer"></i> 打印</button>
+        <a href="/ui/reports/{{ filename }}/download" class="btn btn-outline-primary btn-sm"><i class="bi bi-filetype-html"></i> 下载 HTML</a>
+        <a href="/ui/reports/{{ filename }}/download-word" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-word"></i> 下载 Word</a>
+        <a href="/ui/reports/{{ filename }}/download-pdf" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> 下载 PDF</a>
+        <a href="/ui/reports" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回列表</a>
+    </div>
+</div>
+
+{% if ai_error %}
+<div class="alert alert-warning alert-dismissible no-print" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> {{ ai_error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- AI 智能分析 -->
+{% if data.ai_analysis %}
+{% set ai = data.ai_analysis %}
+<div class="card ai-card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h6 class="mb-0"><i class="bi bi-stars text-warning"></i> AI 综合分析汇总</h6>
+            <div class="d-flex align-items-center gap-2 no-print">
+                {% if ai_enabled %}
+                <form method="post" action="/ui/reports/{{ filename|urlencode }}/ai-analysis" class="ai-reanalyze-form">
+                    <button class="btn btn-sm btn-outline-primary" title="重新分析"><i class="bi bi-arrow-repeat"></i> 重新分析</button>
+                </form>
+                {% endif %}
+                <span class="text-muted small">巡检结果与设备原始命令输出整体融合分析生成{% if ai.meta %} · {{ ai.meta.model }} · {{ ai.meta.analyzed_at[:19].replace('T', ' ') }}{% endif %}</span>
+            </div>
+        </div>
+        <div class="d-flex gap-3 align-items-center mb-3 flex-wrap">
+            <div class="ai-score">
+                <div class="num">{{ ai.health_score }}</div>
+                <div class="label">健康评分</div>
+            </div>
+            <div>
+                <span class="risk-badge risk-{{ ai.overall_risk }}">
+                    {% if ai.overall_risk == 'low' %}风险等级：低{% elif ai.overall_risk == 'medium' %}风险等级：中{% elif ai.overall_risk == 'high' %}风险等级：高{% else %}风险等级：严重{% endif %}
+                </span>
+            </div>
+        </div>
+        {% if ai.executive_summary %}
+        <div class="bg-white rounded p-3 border" style="line-height:1.8">{{ ai.executive_summary }}</div>
+        {% endif %}
+        {% if ai.device_assessments %}
+        <h6 class="mt-3 mb-2 text-muted"><i class="bi bi-diagram-3"></i> 分设备综合评估</h6>
+        {% for a in ai.device_assessments %}
+        <div class="ai-finding sev-low mb-2">
+            <strong>{{ a.device }}</strong>
+            <div class="small mt-1">{{ a.assessment }}</div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% if ai.key_findings %}
+        <h6 class="mt-3 mb-2 text-muted"><i class="bi bi-search-heart"></i> 关键发现({{ ai.key_findings|length }})</h6>
+        {% for f in ai.key_findings %}
+        <div class="ai-finding sev-{{ f.severity }} mb-2">
+            <strong>{{ f.device }}</strong> · {{ f.issue }}
+            {% if f.impact %}<div class="text-muted small mt-1">影响:{{ f.impact }}</div>{% endif %}
+            {% if f.recommendation %}<div class="small mt-1" style="color:#1e6f3f"><i class="bi bi-lightbulb"></i> {{ f.recommendation }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% if ai.recommendations %}
+        <h6 class="mt-3 mb-2 text-muted"><i class="bi bi-clipboard-check"></i> 处置建议(按优先级)</h6>
+        <ol class="mb-0" style="line-height:1.9">
+            {% for r in ai.recommendations %}<li>{{ r }}</li>{% endfor %}
+        </ol>
+        {% endif %}
+        {% if ai.maintenance_suggestions %}
+        <h6 class="mt-3 mb-2 text-muted"><i class="bi bi-graph-up-arrow"></i> 中长期优化建议</h6>
+        <ul class="mb-0" style="line-height:1.9">
+            {% for s in ai.maintenance_suggestions %}<li>{{ s }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+{% elif ai_enabled %}
+<div class="card ai-card mb-4 no-print">
+    <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h6 class="mb-1"><i class="bi bi-stars text-warning"></i> AI 智能分析</h6>
+            <span class="text-muted small">结合大模型运维经验,对本报告进行汇总分析、风险定级与处置建议</span>
+        </div>
+        <form method="post" action="/ui/reports/{{ filename|urlencode }}/ai-analysis">
+            <button class="btn btn-primary btn-sm"><i class="bi bi-magic"></i> 立即分析</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- 报告摘要 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="mb-3"><i class="bi bi-info-circle"></i> 报告摘要</h6>
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted" style="width:100px">报告标题</td><td><strong>{{ data.title }}</strong></td></tr>
+                    <tr><td class="text-muted">生成时间</td><td>{{ data.generated_at[:19] }}</td></tr>
+                    <tr><td class="text-muted">设备数量</td><td>{{ data.total_devices }}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="num text-primary">{{ data.total_devices }}</div>
+                        <div class="label">设备总数</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="num text-success">{{ total_pass }}</div>
+                        <div class="label">PASS</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="num text-danger">{{ total_fail }}</div>
+                        <div class="label">FAIL</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="num text-warning">{{ total_unknown }}</div>
+                        <div class="label">UNKNOWN</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 风险汇总 -->
+{% if fail_items %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="mb-3"><i class="bi bi-exclamation-triangle text-danger"></i> 风险汇总（{{ fail_items|length }} 项）</h6>
+        <div class="row g-2">
+            {% for item in fail_items %}
+            <div class="col-md-6">
+                <div class="card risk-{{ item.severity }} mb-1">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ item.device_name }}</strong> · {{ item.category }}
+                                <div class="text-muted small mt-1">{{ item.message }}</div>
+                            </div>
+                            <span class="badge bg-{{ 'danger' if item.severity == 'critical' else 'warning' }}">{{ item.severity }}</span>
+                        </div>
+                        {% if item.suggestion %}
+                        <div class="small mt-1"><i class="bi bi-lightbulb text-warning"></i> {{ item.suggestion }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 设备清单 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="mb-3"><i class="bi bi-hdd-rack"></i> 设备清单</h6>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th>设备</th><th>IP</th><th>型号</th><th>版本</th><th>PASS</th><th>FAIL</th><th>UNKNOWN</th></tr>
+                </thead>
+                <tbody>
+                    {% for dev in data.devices %}
+                    <tr>
+                        <td><a href="#device-{{ loop.index }}" class="text-decoration-none">{{ dev.name }}</a></td>
+                        <td><code>{{ dev.host }}</code></td>
+                        <td>{{ dev.model or '-' }}</td>
+                        <td>{{ dev.software_version or '-' }}</td>
+                        <td><span class="text-success">{{ dev.pass_count }}</span></td>
+                        <td><span class="text-danger">{{ dev.fail_count }}</span></td>
+                        <td><span class="text-warning">{{ dev.unknown_count }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 设备详情 -->
+{% for dev in data.devices %}
+<div class="card mb-3" id="device-{{ loop.index }}">
+    <div class="card-header bg-white device-header" data-bs-toggle="collapse" data-bs-target="#detail-{{ loop.index }}">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <strong>{{ dev.name }}</strong>
+                <small class="text-muted ms-2">{{ dev.host }} · {{ dev.model or '未知型号' }} · {{ dev.software_version or '' }}</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success">{{ dev.pass_count }} PASS</span>
+                <span class="badge bg-danger">{{ dev.fail_count }} FAIL</span>
+                <span class="badge bg-warning">{{ dev.unknown_count }} UNKNOWN</span>
+                <i class="bi bi-chevron-down"></i>
+            </div>
+        </div>
+    </div>
+    <div id="detail-{{ loop.index }}" class="collapse {% if loop.index == 1 %}show{% endif %}">
+        <div class="card-body p-0">
+            {% if dev.error %}
+            <div class="alert alert-danger m-3">{{ dev.error }}</div>
+            {% else %}
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr><th style="width:120px">检查项</th><th style="width:80px">状态</th><th style="width:60px">级别</th><th>结果</th></tr>
+                </thead>
+                <tbody>
+                    {% for item in dev.check_items %}
+                    <tr>
+                        <td><strong>{{ item.category }}</strong></td>
+                        <td>
+                            {% if item.status == 'PASS' %}
+                            <span class="badge bg-success">PASS</span>
+                            {% elif item.status == 'FAIL' %}
+                            <span class="badge bg-danger">FAIL</span>
+                            {% else %}
+                            <span class="badge bg-warning">UNKNOWN</span>
+                            {% if item.raw_output %}
+                            <button class="btn btn-sm btn-outline-secondary ms-1 copilot-btn"
+                                    data-device="{{ dev.name }}" data-check="{{ item.name }}"
+                                    title="AI 生成解析规则并在确认后入库">AI 解析</button>
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.details.get('severity') %}
+                            <span class="badge bg-{{ 'danger' if item.details.severity == 'critical' else 'warning' if item.details.severity == 'warning' else 'info' }}">{% if item.details.severity == 'critical' %}严重{% elif item.details.severity == 'warning' %}警告{% elif item.details.severity == 'info' %}提示{% else %}{{ item.details.severity }}{% endif %}</span>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td>
+                            {{ item.message }}
+                            {% if item.details.get('suggestion') and item.status == 'FAIL' %}
+                            <div class="small text-muted mt-1"><i class="bi bi-lightbulb"></i> {{ item.details.suggestion }}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if item.raw_output %}
+                    <tr class="raw-row">
+                        <td colspan="4">
+                            <div class="raw-block">
+                                <div class="raw-head">原始输出{% if item.command %} · 执行命令 <code>{{ item.command }}</code>{% endif %}</div>
+                                <pre class="raw-output">{{ item.raw_output }}</pre>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<div class="text-center text-muted small my-4 no-print">
+    昊云网络巡检助手 v0.1.0 · 报告中的敏感信息已自动脱敏
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 重新分析确认
+document.querySelectorAll('form.ai-reanalyze-form').forEach(f => {
+    f.addEventListener('submit', e => {
+        if (!confirm('重新执行 AI 分析将覆盖当前分析结论,继续?')) e.preventDefault();
+    });
+});
+
+// ── 解析器 Copilot(P2):UNKNOWN 项 AI 生成解析规则 → 试跑 → 确认入库 ──
+document.querySelectorAll('.copilot-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const device = btn.dataset.device, check = btn.dataset.check;
+        btn.disabled = true;
+        btn.textContent = 'AI 解析中…';
+        try {
+            const r = await fetch(location.pathname.replace(/\/preview$/, '') + '/copilot', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({device, check_name: check}),
+            });
+            const data = await r.json();
+            if (!data.ok) {
+                alert('生成失败:' + data.error);
+                return;
+            }
+            const sample = JSON.stringify(data.sample, null, 2);
+            const msg = 'AI 为「' + check + '」生成了解析规则:
+
+'
+                + '试跑结果:' + sample + '
+
+是否确认入库?'
+                + '(入库后下次巡检自动生效)';
+            if (!confirm(msg)) return;
+            const c = await fetch('/ui/copilot/confirm', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    vendor: data.vendor, device_type: data.device_type,
+                    check_name: data.check_name,
+                    fields_json: JSON.stringify(data.fields),
+                }),
+            });
+            const cr = await c.json();
+            if (cr.ok) {
+                alert('已入库:' + cr.saved_to + '
+下次巡检该检查项将自动解析。');
+                btn.textContent = '已入库';
+                btn.classList.replace('btn-outline-secondary', 'btn-success');
+            } else {
+                alert('入库失败:' + cr.error);
+            }
+        } catch (e) {
+            alert('请求失败:' + e);
+        } finally {
+            btn.disabled = false;
+            if (btn.textContent === 'AI 解析中…') btn.textContent = 'AI 解析';
+        }
+    });
+});
+</script>
+{% endblock %}

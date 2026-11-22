@@ -1,0 +1,2 @@
+Fan 1:
+  Status: Normal

@@ -1,0 +1,51 @@
+# Juniper Junos 设备巡检规则
+# 基于标准 Junos 检查项编写,check_name 与 JunosDriver 的命令/解析器对应。
+# 注意:解析器尚未真机验证,规则命中情况以真机验收为准。
+
+rules:
+  - id: "J001"
+    check_name: "fan_status"
+    name: "风扇框状态异常"
+    description: "存在状态非 OK 的风扇框"
+    severity: "critical"
+    vendors: ["juniper"]
+    device_types: ["junos"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查风扇框是否松动/损坏,清理风道,必要时更换风扇框"
+
+  - id: "J002"
+    check_name: "power_status"
+    name: "电源模块状态异常"
+    description: "存在状态非 OK 的电源模块"
+    severity: "critical"
+    vendors: ["juniper"]
+    device_types: ["junos"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查电源线连接与电源模块,必要时更换;确认冗余电源配置"
+
+  - id: "J003"
+    check_name: "system_alarms"
+    name: "存在 Major/Critical 告警"
+    description: "系统当前活动告警中存在 Major 或 Critical 级别"
+    severity: "critical"
+    vendors: ["juniper"]
+    device_types: ["junos"]
+    metric: "major_count"
+    operator: "gt"
+    value: 0
+    suggestion: "查看 show system alarms 明细,按告警描述排查硬件或配置问题"
+
+  - id: "J004"
+    check_name: "telnet_service"
+    name: "Telnet 管理服务已启用"
+    description: "设备开启了 Telnet 服务"
+    severity: "warning"
+    vendors: ["juniper"]
+    device_types: ["junos"]
+    metric: "telnet_enabled"
+    operator: "true"
+    suggestion: "Telnet 不安全,建议删除 system services telnet 并使用 SSH 管理"

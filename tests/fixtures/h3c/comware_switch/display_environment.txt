@@ -1,0 +1,5 @@
+System temperature information:
+Slot 1
+  Sensor 1: 38 C
+Slot 2
+  Sensor 1: 41 C

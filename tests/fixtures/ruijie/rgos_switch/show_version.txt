@@ -1,0 +1,16 @@
+System description : Ruijie 10G Ethernet Switch(S5750C-48GT4XS-H) By Ruijie Networks
+System start time  : 2025-02-18 08:10:22
+System uptime      : 28 weeks, 2 days, 05 hours, 41 minutes
+System hardware version : 1.40
+System software version : S5700H_RGOS 11.4(1)B70P1
+System patch number : NA
+System serial number : G1M109S003135
+System boot version : 1.2.36
+
+Module information:
+Slot 0 : S5750C-48GT4XS-H
+    Cpu0:
+        Hardware version : 1.40
+        Boot version     : 1.2.36
+        Software version : S5700H_RGOS 11.4(1)B70P1
+        Serial number    : G1M109S003135

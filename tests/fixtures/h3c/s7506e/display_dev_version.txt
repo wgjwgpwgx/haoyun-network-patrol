@@ -1,0 +1,5 @@
+ 0   LSQ1SRPB   Master   0    S7500E-6605P03   None
+ 1   LSQ1SRPB   Slave     0   S7500E-6605P03   None
+ 2   LSQ1GV40PSC   Normal   0   S7500E-6605P03   None
+ 3   LSQ1GV40PSC   Normal   0   S7500E-6605P03   None
+ 4   LSQ1GP24SC   Normal   0    S7500E-6605P03   None

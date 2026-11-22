@@ -1,0 +1,1 @@
+{"code": 0, "msg": "success", "data": [{"level": "info", "message": "User admin login succeeded"}, {"level": "error", "message": "IPS: Attack detected from 192.168.1.100"}, {"level": "warning", "message": "Interface eth2 link down"}]}

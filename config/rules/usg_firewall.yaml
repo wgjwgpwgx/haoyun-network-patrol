@@ -1,0 +1,27 @@
+# 华为 USG 防火墙巡检规则
+# 大部分检查复用 VRP 交换机规则语义;会话表规则阈值为经验值,
+# 应按设备型号实际会话容量调整。
+
+rules:
+  - id: "U001"
+    check_name: "session_table"
+    name: "防火墙会话数过高"
+    description: "会话表规模超过阈值"
+    severity: "warning"
+    vendors: ["huawei"]
+    device_types: ["usg_firewall"]
+    metric: "session_count"
+    operator: "gt"
+    value: 500000
+    suggestion: "检查是否存在攻击流量或业务激增,按设备型号会话容量评估扩容"
+
+  - id: "U002"
+    check_name: "telnet_service"
+    name: "Telnet 管理服务已启用"
+    description: "设备开启了 Telnet 服务"
+    severity: "warning"
+    vendors: ["huawei"]
+    device_types: ["usg_firewall"]
+    metric: "telnet_enabled"
+    operator: "true"
+    suggestion: "关闭 Telnet,使用 SSH 管理设备"

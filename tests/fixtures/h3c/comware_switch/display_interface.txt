@@ -1,0 +1,46 @@
+GigabitEthernet1/0/1
+Current state: UP
+IP Packet Frame Type: PKTFMT_ETHNT_2, Hardware Address: xxxx-xxxx-xxxx
+Description: To-Core-Switch
+Loopback is not set
+Media type is twisted pair
+Port hardware type is1000_BASE_T
+1000Mbps-speed mode, full-duplex mode
+Link speed type is autonegotiation, Link duplex type is autonegotiation
+Maximum Frame Length: 1536
+Allow jumbo frame to pass
+Broadcast suppression: 100.00%
+Unicast suppression: 100.00%
+Multicast suppression: 100.00%
+Input:  1234567 packets, 987654321 bytes
+        0 errors, 0 CRC, 0 giants, 0 throttles
+Output: 2345678 packets, 876543210 bytes
+        0 errors, 0 aborted, 0 deferred
+
+GigabitEthernet1/0/2
+Current state: UP
+IP Packet Frame Type: PKTFMT_ETHNT_2, Hardware Address: xxxx-xxxx-xxxx
+Description: To-Access-Switch
+Loopback is not set
+Media type is twisted pair
+Port hardware type is1000_BASE_T
+1000Mbps-speed mode, full-duplex mode
+Link speed type is autonegotiation, Link duplex type is autonegotiation
+Maximum Frame Length: 1536
+Input:  567890 packets, 123456789 bytes
+        5 errors, 3 CRC, 0 giants, 0 throttles
+Output: 678901 packets, 234567890 bytes
+        2 errors, 0 aborted, 0 deferred
+
+GigabitEthernet1/0/3
+Current state: DOWN
+IP Packet Frame Type: PKTFMT_ETHNT_2, Hardware Address: xxxx-xxxx-xxxx
+Loopback is not set
+Media type is twisted pair
+Port hardware type is1000_BASE_T
+Unknown-speed mode, unknown-duplex mode
+Link speed type is autonegotiation, Link duplex type is autonegotiation
+Input:  0 packets, 0 bytes
+        0 errors, 0 CRC, 0 giants, 0 throttles
+Output: 0 packets, 0 bytes
+        0 errors, 0 aborted, 0 deferred

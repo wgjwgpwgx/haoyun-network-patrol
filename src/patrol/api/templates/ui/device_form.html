@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑' if device else '新增' }}设备 - 昊云网络巡检助手{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="bi bi-{{ 'pencil' if device else 'plus-lg' }}"></i> {{ '编辑' if device else '新增' }}设备</h5>
+    <a href="/ui/devices" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" action="/ui/devices/{{ device.name if device else 'new' }}" novalidate>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">设备名称 <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="form-control" required maxlength="100"
+                           value="{{ device.name if device else '' }}" placeholder="如：核心交换机-1">
+                    <div class="invalid-feedback">请输入设备名称</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">归属客户（甲方公司）</label>
+                    <select name="customer" class="form-select">
+                        <option value="">未指定</option>
+                        {% for c in customers %}
+                        <option value="{{ c.name }}" {{ 'selected' if device and device.customer==c.name else '' }}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if not customers %}<div class="form-text">尚未添加客户,可到 <a href="/ui/customers" target="_blank">客户管理</a> 添加</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">管理 IP <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="text" name="host" id="hostInput" class="form-control" required
+                               pattern="^[\d.]+$" value="{{ device.host if device else '' }}" placeholder="如：192.168.158.35">
+                        <button type="button" class="btn btn-outline-secondary" id="btnDetect"
+                                title="填好 IP/用户名/密码后点击,自动识别厂商与型号">自动识别</button>
+                    </div>
+                    <div class="invalid-feedback">请输入有效的 IP 地址</div>
+                    <div class="form-text" id="detectHint">填好 IP、用户名、密码后点「自动识别」,厂商/型号自动带出</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">厂商</label>
+                    <select name="vendor" id="vendorSelect" class="form-select">
+                        {% for v in vendor_options %}
+                        <option value="{{ v.value }}" {{ 'selected' if (device and device.vendor==v.value) or (not device and loop.first) else '' }}>{{ v.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">设备类型</label>
+                    <select name="device_type" id="deviceTypeSelect" class="form-select">
+                        {% for v in vendor_options %}{% for t in v.device_types %}
+                        <option value="{{ t.value }}" data-vendor="{{ v.value }}"
+                                {{ 'selected' if device and device.device_type==t.value else '' }}>{{ t.label }}</option>
+                        {% endfor %}{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">登录方式</label>
+                    <select name="login_method" id="loginMethodSelect" class="form-select">
+                        <option value="ssh" {{ 'selected' if not device or device.login_method=='ssh' else '' }}>SSH</option>
+                        <option value="telnet" {{ 'selected' if device and device.login_method=='telnet' else '' }}>Telnet</option>
+                        <option value="snmp" {{ 'selected' if device and device.login_method=='snmp' else '' }}>SNMP 只读</option>
+                        <option value="console" {{ 'selected' if device and device.login_method=='console' else '' }}>Console 串口</option>
+                        <option value="web" {{ 'selected' if device and device.login_method=='web' else '' }}>Web 页面采集</option>
+                        <option value="api" {{ 'selected' if device and device.login_method=='api' else '' }}>API 接口</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">SSH 端口</label>
+                    <input type="number" name="port" class="form-control" min="1" max="65535"
+                           value="{{ device.port if device else 22 }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Web 管理端口</label>
+                    <input type="number" name="web_port" class="form-control" min="1" max="65535"
+                           value="{{ device.web_port if device else 443 }}">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="skip_tls_verify"
+                               value="true" id="skipTlsVerify"
+                               {{ 'checked' if device and device.verify_ssl == false else '' }}>
+                        <label class="form-check-label" for="skipTlsVerify">
+                            跳过 HTTPS 证书校验(自签名证书)
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                    <input type="text" name="username" class="form-control" required
+                           value="{{ device.username if device else '' }}" placeholder="SSH 用户名">
+                    <div class="invalid-feedback">请输入用户名</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">密码 {% if not device %}<span class="text-danger">*</span>{% endif %}</label>
+                    <input type="password" name="password" class="form-control" autocomplete="new-password"
+                           {% if not device %}required minlength="1"{% endif %}
+                           placeholder="{{ '留空则保持原密码不变' if device else 'SSH / Web 登录密码' }}">
+                    {% if not device %}<div class="invalid-feedback">请输入密码</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Super 密码 <span class="text-muted small">(选填)</span></label>
+                    <input type="password" name="super_password" class="form-control" autocomplete="new-password"
+                           {% if device and device.super_password %}placeholder="已配置,留空保持不变"{% else %}placeholder="登录后提权密码(华为/H3C super),无则留空"{% endif %}>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">连接超时（秒）</label>
+                    <input type="number" name="timeout" class="form-control" min="1" max="300"
+                           value="{{ device.timeout if device else 30 }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">命令超时（秒）</label>
+                    <input type="number" name="command_timeout" class="form-control" min="1" max="600"
+                           value="{{ device.command_timeout if device else 120 }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">状态</label>
+                    <select name="enabled" class="form-select">
+                        <option value="true" {{ 'selected' if not device or device.enabled else '' }}>启用</option>
+                        <option value="false" {{ 'selected' if device and not device.enabled else '' }}>停用</option>
+                    </select>
+                </div>
+            </div>
+            <hr>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> {{ '保存' if device else '创建' }}</button>
+                <a href="/ui/devices" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // 自动识别(销号清单 #6):填 IP+账号密码后一键判定厂商/型号
+    const btnDetect = document.getElementById('btnDetect');
+    if (btnDetect) {
+        btnDetect.addEventListener('click', async () => {
+            const host = document.getElementById('hostInput').value.trim();
+            const user = document.querySelector('input[name=username]').value.trim();
+            const pass = document.querySelector('input[name=password]').value;
+            const login = document.getElementById('loginMethodSelect').value;
+            const hint = document.getElementById('detectHint');
+            if (!host || !user || !pass) {
+                hint.textContent = '请先填写 IP、用户名、密码再识别';
+                hint.className = 'form-text text-danger';
+                return;
+            }
+            btnDetect.disabled = true;
+            hint.textContent = '正在连接识别(最长约 30 秒)…';
+            hint.className = 'form-text text-muted';
+            try {
+                const body = new URLSearchParams({
+                    host, username: user, password: pass,
+                    login_method: login,
+                    port: document.querySelector('input[name=port]').value || 0,
+                });
+                const r = await fetch('/ui/devices/detect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body,
+                });
+                const data = await r.json();
+                if (data.ok && data.result) {
+                    const v = data.result;
+                    document.querySelector('select[name=vendor]').value = v.vendor;
+                    vendorSel.dispatchEvent(new Event('change'));
+                    setTimeout(() => {
+                        const typeSel = document.getElementById('deviceTypeSelect');
+                        if ([...typeSel.options].some(o => o.value === v.device_type)) {
+                            typeSel.value = v.device_type;
+                        }
+                    }, 50);
+                    hint.textContent = `识别成功(${data.method.toUpperCase()}):${v.model || v.vendor} ${v.software_version || ''} 已自动带出`;
+                    hint.className = 'form-text text-success';
+                } else {
+                    hint.textContent = data.error
+                        ? `识别失败:${data.error}`
+                        : '已登录但无法识别厂商,请人工选择(回显片段:' + (data.raw || '').slice(0, 60) + ')';
+                    hint.className = 'form-text text-danger';
+                }
+            } catch (e) {
+                hint.textContent = `识别请求失败:${e}`;
+                hint.className = 'form-text text-danger';
+            } finally {
+                btnDetect.disabled = false;
+            }
+        });
+    }
+
+    // 登录方式切换联动默认端口(SSH 22 / Telnet 23)
+    const loginSel = document.getElementById('loginMethodSelect');
+    const portInput = document.querySelector('input[name="port"]');
+    if (loginSel && portInput) {
+        loginSel.addEventListener('change', () => {
+            if (loginSel.value === 'ssh') portInput.value = 22;
+            if (loginSel.value === 'telnet') portInput.value = 23;
+            if (loginSel.value === 'snmp') portInput.value = 161;
+        });
+    }
+
+    // 设备类型选项跟随厂商联动
+    const vendorSel = document.getElementById('vendorSelect');
+    const typeSel = document.getElementById('deviceTypeSelect');
+    function filterTypes() {
+        const v = vendorSel.value;
+        let firstVisible = null;
+        for (const opt of typeSel.options) {
+            const show = opt.dataset.vendor === v;
+            opt.hidden = !show;
+            opt.disabled = !show;
+            if (show && !firstVisible) firstVisible = opt;
+        }
+        const selected = typeSel.selectedOptions[0];
+        if ((!selected || selected.disabled) && firstVisible) {
+            firstVisible.selected = true;
+        }
+    }
+    vendorSel.addEventListener('change', filterTypes);
+    filterTypes();
+})();
+</script>
+{% endblock %}

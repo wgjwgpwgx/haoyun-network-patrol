@@ -1,0 +1,155 @@
+#
+ version 5.20, Release 6708P09
+#
+ sysname WH_SW_S7506E-V
+#
+ super password level 3 cipher $c$3$hC7sqXQM09wYjIIR1aViR8zGISPNUv4Z/2vakhUaWGo=
+#
+ domain default enable system
+#
+ ip redirects enable
+ ip ttl-expires enable
+ ip unreachables enable
+#
+ mirroring-group 1 local
+#
+switch-mode standard
+switch-mode normal slot 6
+switch-mode normal slot 7
+#
+switch-mode  route-normal
+#
+ password-recovery enable
+#
+acl number 2000 
+ rule 0 permit source 192.168.229.120 0
+ rule 5 permit source 192.168.229.8 0
+acl number 2001
+ rule 0 permit source 192.168.229.102 0
+ rule 5 permit source 192.168.229.11 0
+ rule 10 permit source 192.168.229.12 0
+#
+vlan 1
+#
+vlan 10
+ name SERVER
+#
+vlan 20
+ name JIGUAN
+#
+vlan 30
+ name HAIQUJU
+#
+vlan 40
+ name XILOUJIGUAN
+#
+vlan 50
+ name CAIWU     
+#
+domain system
+ access-limit disable
+ state active
+ idle-cut disable
+ self-service-url disable
+#
+user-group system
+ group-attribute allow-guest
+#
+local-user h3c
+ password cipher $c$3$OqLKmAlRga+CS3ic5s8PqMVmf2rGIN4crmVLdNlryiU=
+ authorization-attribute level 1
+ service-type ssh
+#
+ stp instance 0 root primary
+ stp enable
+#
+interface Bridge-Aggregation1
+ description To_E2300
+#
+interface Bridge-Aggregation2
+ description To_xintiao
+ port link-type trunk
+ port trunk permit vlan all
+#
+interface NULL0
+#
+interface Vlan-interface1
+ description To_E2300
+ ip address 192.168.238.35 255.255.255.224
+#
+interface Vlan-interface10
+ description To_SERVER
+ ip address 192.168.229.3 255.255.255.0
+ vrrp vrid 10 virtual-ip 192.168.229.254
+ vrrp vrid 10 priority 130
+ vrrp vrid 10 track interface Vlan-interface1 reduced 50
+#
+interface Vlan-interface20
+ description To_JIGUAN
+ ip address 192.168.225.3 255.255.255.0
+ vrrp vrid 20 virtual-ip 192.168.225.254
+ vrrp vrid 20 priority 130
+ vrrp vrid 20 track interface Vlan-interface1 reduced 50
+#               
+interface Vlan-interface30
+ description To_HAIQUJU
+ ip address 192.168.226.62 255.255.255.192
+#
+interface Vlan-interface40
+ description To_XILOUJIGUAN
+ ip address 192.168.227.254 255.255.255.0
+#
+interface Vlan-interface50
+ description To_CAIWU
+ ip address 192.168.224.254 255.255.255.0
+#
+interface GigabitEthernet7/0/36
+ port link-mode bridge
+ description To_XILOU
+ port link-type trunk
+ undo port trunk permit vlan 1
+ port trunk permit vlan 30 40 50
+ mirroring-group 1 mirroring-port both
+#
+interface GigabitEthernet7/0/37
+ port link-mode bridge
+ port link-type trunk
+ port trunk permit vlan all
+ port link-aggregation group 2
+#
+ospf 1
+ import-route direct
+ import-route static
+ stub-router
+ area 0.0.0.16
+  network 192.168.229.0 0.0.0.255
+  network 192.168.225.0 0.0.0.255
+  network 192.168.238.32 0.0.0.31
+  network 192.168.226.0 0.0.0.63
+  network 192.168.227.0 0.0.0.255
+  network 192.168.224.0 0.0.0.255
+#
+ info-center loghost 192.168.229.227
+ undo info-center logfile enable
+#
+ snmp-agent
+ snmp-agent local-engineid 800063A2030CDA4194FF2E
+ snmp-agent community read nmgyc  acl 2000
+ snmp-agent community read public
+ snmp-agent sys-info version all
+#
+ ssh server enable
+ ssh user h3c service-type stelnet authentication-type password
+#
+ arp source-suppression enable
+ arp anti-attack source-mac filter
+ arp anti-attack source-mac exclude-mac 00e0-4c10-0bde 000c-2973-204b
+#
+user-interface aux 0 1
+user-interface vty 0 4
+ acl 2001 inbound
+ authentication-mode scheme
+ protocol inbound ssh
+user-interface vty 5 15
+#               
+return

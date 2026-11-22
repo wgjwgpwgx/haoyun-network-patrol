@@ -1,0 +1,11 @@
+
+         OSPF process 1 with Router ID 192.168.154.221
+                Neighbors
+
+ Area 0.0.0.0          interface  Vlanif10's neighbors
+
+ Router ID       Address         Pri DeadTime  State         Interface
+ 192.168.158.35    192.168.10.2       1   00:00:35  Full/DR       Vlanif10
+ 192.168.20.1      192.168.20.2       1   00:00:28  Full/BDR      Vlanif20
+ 192.168.30.1      192.168.30.2       1   00:00:12  Init          Vlanif30
+

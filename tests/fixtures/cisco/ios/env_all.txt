@@ -1,0 +1,21 @@
+Fan Status:
+  Fan 1
+    Fan Type: Fan-1
+    Status:  OK
+  Fan 2
+    Fan Type: Fan-2
+    Status:  Fail
+
+POWER SUPPLIES:
+  Power Supply 1
+    Model:           PWR-C
+    Type:            AC power supply
+    Status:          OK
+  Power Supply 2
+    Model:           PWR-C
+    Type:            AC power supply
+    Status:          OK
+
+SYSTEM TEMPERATURE is OK
+Inlet Temperature Value: 24 Degree Celsius
+Outlet Temperature Value: 31 Degree Celsius

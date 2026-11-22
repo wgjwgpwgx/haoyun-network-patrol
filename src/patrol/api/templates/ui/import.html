@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}批量导入设备 - 巡检助手{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="bi bi-file-earmark-arrow-up"></i> 批量导入设备(智能识别)</h5>
+    <a href="/ui/devices" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回设备列表</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+{% endif %}
+
+<!-- 阶段一:上传 -->
+{% if stage == 'upload' %}
+<div class="card">
+    <div class="card-body">
+        <p class="text-muted">把您手头的<b>用户名密码表</b>直接上传(Excel .xlsx / CSV / Word 表格 .docx),
+            系统自动识别哪列是地址、用户名、密码、Super 密码,识别结果确认后一键建档。</p>
+        <form method="post" action="/ui/devices/import" enctype="multipart/form-data" class="d-flex gap-2">
+            <input type="file" name="file" class="form-control" required
+                   accept=".xlsx,.xlsm,.csv,.docx">
+            <button type="submit" class="btn btn-primary text-nowrap"><i class="bi bi-upload"></i> 上传并识别</button>
+        </form>
+        <div class="form-text mt-2">提示:老格式 .xls 请先用 Excel 另存为 .xlsx;首行请保留表头(无表头也可识别,但需手工确认列)。</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 阶段二:预览确认 -->
+{% if stage == 'preview' %}
+{% if pv.missing_required %}
+<div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i> 以下必填字段未能自动识别,请手工指定列:
+        {% for f in pv.missing_required %}<b>{{ labels[f] }}</b>{% if not loop.last %}、{% endif %}{% endfor %}
+</div>
+{% endif %}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <span class="me-3"><i class="bi bi-file-earmark"></i> {{ pv.file|truncate(60) }}</span>
+        <span class="badge bg-secondary">{{ pv.source }}</span>
+        <span class="badge bg-primary ms-1">共 {{ pv.row_count }} 行数据</span>
+        {% if pv.low_confidence %}
+        <span class="badge bg-warning text-dark ms-1">待确认:{{ pv.low_confidence|join('、') }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<form method="post" action="/ui/devices/import/commit">
+    <input type="hidden" name="token" value="{{ token }}">
+
+    <div class="card mb-3">
+        <div class="card-header bg-white"><b>字段映射</b>(黄色为低置信度,请核对)</div>
+        <div class="card-body">
+            <div class="row g-3">
+                {% for field in fields %}
+                {% set m = pv.mapping.get(field) %}
+                <div class="col-md-4">
+                    <label class="form-label {{ 'text-danger' if field in required else 'text-muted' }}">
+                        {{ labels[field] }}</label>
+                    <select name="map_{{ field }}" class="form-select
+                        {{ 'border-warning' if m and m.confidence < 0.8 else '' }}">
+                        <option value="">— 不导入 —</option>
+                        {% for col in range(pv.headers|length) %}
+                        {% set sel = m.column if m else none %}
+                        <option value="{{ col }}" {{ 'selected' if sel == col else '' }}>
+                            第{{ col+1 }}列:{{ pv.headers[col] }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if m %}
+                    <div class="form-text {{ 'text-warning' if m.confidence < 0.8 else 'text-success' }}">
+                        置信 {{ m.confidence }} · {{ m.reason }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                <div class="col-md-4">
+                    <label class="form-label text-muted">默认归属单位(未识别到单位列时使用)</label>
+                    <select name="default_customer" class="form-select">
+                        <option value="">不指定</option>
+                        {% for c in customers %}
+                        <option value="{{ c.name }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header bg-white"><b>数据预览</b>(前 {{ pv.rows|length }} 行)</div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-sm table-bordered mb-0" style="font-size:12px">
+                <thead class="table-light">
+                    <tr>{% for h in pv.headers %}<th>{{ h }}</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                    {% for row in pv.rows %}
+                    <tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> 确认导入 {{ pv.row_count }} 行</button>
+    <a href="/ui/devices/import" class="btn btn-outline-secondary">重新上传</a>
+</form>
+{% endif %}
+
+<!-- 阶段三:完成 -->
+{% if stage == 'done' %}
+<div class="card">
+    <div class="card-body">
+        {% if result.created %}
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> 成功导入 <b>{{ result.created }}</b> 台设备
+            {% if result.skipped %},跳过 <b>{{ result.skipped }}</b> 行{% endif %}。
+        </div>
+        {% else %}
+        <div class="alert alert-danger"><i class="bi bi-x-circle"></i> 没有导入任何设备,请根据下方原因修正后重试。</div>
+        {% endif %}
+        {% if result.errors %}
+        <table class="table table-sm table-bordered">
+            <thead class="table-light"><tr><th>行号</th><th>设备</th><th>跳过原因</th></tr></thead>
+            <tbody>
+                {% for e in result.errors %}
+                <tr><td>{{ e.row }}</td><td>{{ e.name }}</td><td>{{ e.reason }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        <a href="/ui/devices" class="btn btn-primary"><i class="bi bi-hdd-rack"></i> 查看设备列表</a>
+        <a href="/ui/devices/import" class="btn btn-outline-secondary">继续导入</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,15 @@
+H3C Comware Software, Version 7.1.075, Release 6326P02
+Copyright (c) 2004-2023 New H3C Technologies Co., Ltd. All rights reserved.
+H3C S5560X-54C-EI uptime is 12 weeks, 3 days, 5 hours, 22 minutes
+Last reboot reason : User reboot
+
+Boot image: flash:/s5560x-cmw710-boot-r6326p02.bin
+Boot image version: 7.1.075, Release 6326P02
+Compiled: Dec 15 2023, 10:30:45
+
+FLASH: 512M
+CPU: MIPS64 1.2GHz
+DRAM: 2048M
+PCB   Version: Ver.A
+Logic Version: 1.0
+Bootrom Version: 119

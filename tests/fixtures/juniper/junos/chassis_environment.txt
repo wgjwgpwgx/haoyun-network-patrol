@@ -1,0 +1,8 @@
+Class Item                   Status     Measurement
+Power Power Supply 0         OK
+Power Power Supply 1         OK
+Temp  Exhaust Air           OK         26 degrees C / 78 degrees F
+Temp  PCBC Plane            OK         37 degrees C / 98 degrees F
+Fan  Fan Tray 0             OK         Spinning at 3920 RPM
+Fan  Fan Tray 1             OK         Spinning at 3880 RPM
+Fan  Fan Tray 2             Failed     Spinning at 0 RPM

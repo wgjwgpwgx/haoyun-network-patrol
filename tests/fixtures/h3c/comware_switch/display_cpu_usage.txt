@@ -1,0 +1,4 @@
+Slot 0 CPU 0 usage:
+       12% in last 5 seconds
+       15% in last 1 minute
+       10% in last 5 minutes

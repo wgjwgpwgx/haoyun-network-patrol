@@ -1,0 +1,4 @@
+  ===config difference===
+  +  interface GigabitEthernet0/0/24
+  +   description to-server
+  +  undo shutdown

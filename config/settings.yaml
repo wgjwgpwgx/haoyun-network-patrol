@@ -1,0 +1,4 @@
+# 软件设置(系统设置页面自动保存)
+# update_manifest_url: 更新清单 JSON 地址,支持 http(s) 或本地文件路径
+# 清单格式: {"version": "0.2.0", "url": "https://.../更新包.zip", "notes": "更新说明", "sha256": "可选校验和"}
+update_manifest_url: ''

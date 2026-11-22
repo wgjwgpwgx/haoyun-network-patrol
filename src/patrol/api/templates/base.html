@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}昊云网络巡检助手{% endblock %}</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png?v=transparent">
+    <link href="/static/vendor/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/vendor/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --brand-blue: #2b4aa8;
+            --brand-blue-deep: #1e357e;
+            --brand-ink: #141d42;
+            --brand-gold: #c9a24b;
+            --brand-gold-soft: #e8d9b0;
+            --brand-bg: #f5f7fb;
+            --brand-line: #e6eaf2;
+        }
+        body {
+            background: var(--brand-bg);
+            font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            color: #2c3446;
+        }
+
+        /* ── 顶部导航 ─────────────────────────────── */
+        .navbar {
+            background: linear-gradient(90deg, var(--brand-ink) 0%, #1b2a5e 55%, #24367a 100%) !important;
+            box-shadow: 0 2px 12px rgba(20, 29, 66, 0.25);
+            border-bottom: 2px solid transparent;
+            border-image: linear-gradient(90deg, var(--brand-gold), #dfc07a 40%, transparent 90%) 1;
+        }
+        .navbar-brand { display: flex; align-items: center; gap: 10px; }
+        .navbar-brand img { width: 32px; height: 32px; }
+        .navbar-brand .brand-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: #fff;
+        }
+        .navbar .brand-tagline {
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: var(--brand-gold-soft);
+            opacity: .85;
+        }
+
+        /* ── 侧边栏 ──────────────────────────────── */
+        .sidebar {
+            min-height: calc(100vh - 58px);
+            background: #fff;
+            border-right: 1px solid var(--brand-line);
+        }
+        .sidebar .nav-link {
+            color: #5a6478;
+            padding: 11px 18px;
+            border-radius: 10px;
+            margin: 3px 10px;
+            font-size: .925rem;
+            position: relative;
+            transition: all .18s ease;
+        }
+        .sidebar .nav-link:hover { background: #eef2fa; color: var(--brand-blue); }
+        .sidebar .nav-link.active {
+            background: linear-gradient(90deg, #eef2fb, #e4ebf9);
+            color: var(--brand-blue-deep);
+            font-weight: 600;
+        }
+        .sidebar .nav-link.active::before {
+            content: "";
+            position: absolute;
+            left: 0; top: 18%; bottom: 18%;
+            width: 4px;
+            border-radius: 2px;
+            background: linear-gradient(180deg, #e3c47c, #b08a35);
+            box-shadow: 0 0 6px rgba(201, 162, 75, .55);
+        }
+        .sidebar .nav-link i { width: 20px; text-align: center; margin-right: 10px; }
+        .main-content { padding: 24px 28px; }
+
+        /* ── 卡片 / 表格 ─────────────────────────── */
+        .card {
+            border: 1px solid var(--brand-line);
+            box-shadow: 0 1px 2px rgba(20, 29, 66, .04), 0 6px 20px rgba(20, 29, 66, .05);
+            border-radius: 12px;
+            background: #fff;
+        }
+        .card-header { border-bottom: 1px solid var(--brand-line); }
+        .stat-card { text-align: center; padding: 22px; position: relative; overflow: hidden; }
+        .stat-card::after {
+            content: "";
+            position: absolute; left: 0; right: 0; top: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--brand-blue), #7c93d6);
+            opacity: .8;
+        }
+        .stat-card .num { font-size: 34px; font-weight: 700; letter-spacing: 1px; }
+        .stat-card .label { color: #8a93a8; font-size: 13px; margin-top: 2px; }
+
+        .table { --bs-table-hover-bg: #f6f8fd; }
+        .table th {
+            font-size: 12.5px;
+            color: #7d8699;
+            font-weight: 600;
+            letter-spacing: .5px;
+            background: #f7f9fd;
+            border-bottom: 1px solid var(--brand-line) !important;
+        }
+        .table td { border-color: #eef1f7; }
+
+        /* ── 品牌色覆盖 Bootstrap ─────────────────── */
+        .btn-primary {
+            --bs-btn-bg: var(--brand-blue);
+            --bs-btn-border-color: var(--brand-blue);
+            --bs-btn-hover-bg: var(--brand-blue-deep);
+            --bs-btn-hover-border-color: var(--brand-blue-deep);
+            --bs-btn-active-bg: #182c66;
+            --bs-btn-active-border-color: #182c66;
+            --bs-btn-disabled-bg: var(--brand-blue);
+            --bs-btn-disabled-border-color: var(--brand-blue);
+            box-shadow: 0 2px 8px rgba(43, 74, 168, .25);
+        }
+        .btn-outline-primary {
+            --bs-btn-color: var(--brand-blue);
+            --bs-btn-border-color: #aebde4;
+            --bs-btn-hover-bg: var(--brand-blue);
+            --bs-btn-hover-border-color: var(--brand-blue);
+            --bs-btn-active-bg: var(--brand-blue-deep);
+            --bs-btn-active-border-color: var(--brand-blue-deep);
+        }
+        .text-primary { color: var(--brand-blue) !important; }
+        .bg-primary { background-color: var(--brand-blue) !important; }
+        a { color: var(--brand-blue); }
+        a:hover { color: var(--brand-blue-deep); }
+        .form-control:focus, .form-select:focus {
+            border-color: #8fa3dd;
+            box-shadow: 0 0 0 .2rem rgba(43, 74, 168, .12);
+        }
+        .page-link { color: var(--brand-blue); }
+        .page-item.active .page-link {
+            background-color: var(--brand-blue);
+            border-color: var(--brand-blue);
+        }
+
+        /* ── 状态徽章(柔和不刺眼) ────────────────── */
+        .badge-pass { background: #4caf6e; }
+        .badge-fail { background: #e4565e; }
+        .badge-unknown { background: #e0a63a; }
+        .badge-critical { background: #e4565e; }
+        .badge-warning { background: #e0a63a; }
+        .badge-info { background: #4a90d9; }
+        .btn-action { padding: 4px 10px; font-size: 12px; }
+
+        /* ── 滚动条 ──────────────────────────────── */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #c6cddd; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8b3cc; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .mobile-nav { display: block !important; }
+        }
+        .mobile-nav { display: none; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/ui">
+                <img src="/static/logo.png?v=transparent" alt="昊云网络巡检助手">
+                <span class="brand-name">昊云网络巡检助手</span>
+            </a>
+            <div class="d-flex align-items-center">
+                <span class="brand-tagline me-3 d-none d-md-block">HAOYUN&nbsp;NETWORK&nbsp;PATROL</span>
+                {% if auth_on %}
+                <a href="/ui/logout" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-box-arrow-right"></i> 退出登录
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- 移动端导航 -->
+    <div class="mobile-nav bg-white border-bottom p-2">
+        <div class="d-flex gap-1 flex-wrap">
+            <a href="/ui" class="btn btn-sm btn-outline-secondary"><i class="bi bi-speedometer2"></i></a>
+            <a href="/ui/devices" class="btn btn-sm btn-outline-secondary"><i class="bi bi-hdd-rack"></i></a>
+            <a href="/ui/customers" class="btn btn-sm btn-outline-secondary"><i class="bi bi-people"></i></a>
+            <a href="/ui/tasks" class="btn btn-sm btn-outline-secondary"><i class="bi bi-play-circle"></i></a>
+            <a href="/ui/reports" class="btn btn-sm btn-outline-secondary"><i class="bi bi-file-earmark-text"></i></a>
+            <a href="/ui/settings" class="btn btn-sm btn-outline-secondary"><i class="bi bi-gear"></i></a>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <nav class="col-md-2 sidebar d-none d-md-block pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="/ui">
+                            <i class="bi bi-speedometer2"></i> 风险汇总
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active == 'devices' %}active{% endif %}" href="/ui/devices">
+                            <i class="bi bi-hdd-rack"></i> 设备管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active == 'customers' %}active{% endif %}" href="/ui/customers">
+                            <i class="bi bi-people"></i> 客户管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active == 'knowledge' %}active{% endif %}" href="/ui/knowledge">
+                            <i class="bi bi-database"></i> 知识库
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active == 'tasks' %}active{% endif %}" href="/ui/tasks">
+                            <i class="bi bi-play-circle"></i> 巡检任务
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active == 'reports' %}active{% endif %}" href="/ui/reports">
+                            <i class="bi bi-file-earmark-text"></i> 报告管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active == 'settings' %}active{% endif %}" href="/ui/settings">
+                            <i class="bi bi-gear"></i> 系统设置
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- 主内容 -->
+            <main class="col-md-10 main-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script src="/static/vendor/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

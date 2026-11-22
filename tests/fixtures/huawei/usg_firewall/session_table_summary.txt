@@ -1,0 +1,5 @@
+ Current sessions: 
+  VPN: public -> public 
+  20000 sessions 
+ Slot 1 cpu 0:  35800 sessions 
+ Total 35800 sessions

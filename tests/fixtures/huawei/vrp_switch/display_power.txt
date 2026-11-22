@@ -1,0 +1,4 @@
+Power 1:
+  Status: Normal
+Power 2:
+  Status: Normal

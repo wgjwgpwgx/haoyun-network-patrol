@@ -1,0 +1,37 @@
+Cisco IOS Software, C2960S Software (C2960S-UNIVERSALK9-M), Version 15.2(2)E9, RELEASE SOFTWARE (fc3)
+Technical Support: http://www.cisco.com/techsupport
+Copyright (c) 1986-2019 by Cisco Systems, Inc.
+Compiled Mon 03-Jun-19 08:25 by prod_rel_team
+
+ROM: Bootstrap program is C2960S boot loader
+BOOTLDR: C2960S Boot Loader (C2960S-HBOOT-M) Version 15.2(2)E9, RELEASE SOFTWARE (fc3)
+
+sw-access-01 uptime is 30 weeks, 2 days, 3 hours, 55 minutes
+System returned to ROM by power-on
+System restarted at 09:12:33 UTC Mon May 11 2026
+System image file is "flash:/c2960s-universalk9-mz.152-2.E9.bin"
+
+
+This product contains cryptographic features and is subject to United
+States and local country laws governing import, export, transfer and
+use. Delivery of Cisco cryptographic products does not imply
+third-party authority to import, export, distribute or use encryption.
+
+cisco WS-C2960S-48TS-L (PowerPC405) processor (revision R0) with 131072K bytes of memory.
+Processor board ID FDO1651H0K4
+48 Gigabit Ethernet interfaces
+2 Gigabit Ethernet SFP interfaces
+The password-recovery mechanism is enabled.
+
+512K bytes of flash-simulated non-volatile configuration memory.
+Base ethernet MAC Address       : 00:1B:0C:AA:BB:CC
+Motherboard assembly number     : 73-12051-07
+Power supply part number        : 341-0097-05
+Motherboard serial number       : FDO16500GHU
+Power supply serial number      : DCA1650H0LV
+Model revision number           : K0
+Motherboard revision number     : A0
+Model number                    : WS-C2960S-48TS-L
+System serial number            : FDO1651H0K4
+Topology CPU part number        : 73-11631-09
+Configuration register is 0xF

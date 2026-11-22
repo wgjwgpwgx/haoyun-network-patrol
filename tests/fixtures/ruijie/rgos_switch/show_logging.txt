@@ -1,0 +1,5 @@
+2026‑09‑21 15:45:12 RJ‑SW‑AGG‑01 %%7‑SHELL: User admin logged in from SSH(192.168.100.22)
+2026‑09‑21 14:32:05 RJ‑SW‑AGG‑01 %%6‑LINKCHG: Interface GigabitEthernet 0/11 status changed to Up
+2026‑09‑21 14:31:41 RJ‑SW‑AGG‑01 %%6‑LINKCHG: Interface GigabitEthernet 0/11 status changed to Down
+2026‑09‑20 23:10:44 RJ‑SW‑AGG‑01 %%5‑OSPF_NBR_CHG: OSPF neighbor 192.168.162.1 state changed to Full
+2026‑09‑20 10:05:33 RJ‑SW‑AGG‑01 %%7‑SHELL: User admin executed command: show cpu

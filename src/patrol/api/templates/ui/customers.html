@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}客户管理 - 昊云网络巡检助手{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="bi bi-people"></i> 客户管理</h5>
+    <span class="text-muted small">共 {{ customers|length }} 家客户</span>
+</div>
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- 新增/编辑表单 -->
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title mb-3">
+            <i class="bi bi-{{ 'pencil' if editing else 'plus-lg' }}"></i>
+            {{ '编辑客户:' ~ editing.name if editing else '新增客户(甲方公司)' }}
+        </h6>
+        <form method="post" action="/ui/customers/save" class="row g-3">
+            {% if editing %}
+            <input type="hidden" name="orig_name" value="{{ editing.name }}">
+            {% endif %}
+            <div class="col-md-3">
+                <label class="form-label">公司名称 <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" required maxlength="100"
+                       value="{{ editing.name if editing else '' }}" placeholder="如:XX 科技有限公司">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">联系人</label>
+                <input type="text" name="contact" class="form-control" maxlength="100"
+                       value="{{ editing.contact if editing else '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">联系电话</label>
+                <input type="text" name="phone" class="form-control" maxlength="50"
+                       value="{{ editing.phone if editing else '' }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">备注</label>
+                <input type="text" name="remark" class="form-control" maxlength="500"
+                       value="{{ editing.remark if editing else '' }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> {{ '保存修改' if editing else '添加' }}
+                </button>
+                {% if editing %}
+                <a href="/ui/customers" class="btn btn-outline-secondary">取消</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 客户列表 -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>公司名称</th>
+                    <th>联系人</th>
+                    <th>联系电话</th>
+                    <th>名下设备</th>
+                    <th>备注</th>
+                    <th style="width:120px">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in customers %}
+                <tr>
+                    <td><strong>{{ c.name }}</strong></td>
+                    <td>{{ c.contact or '-' }}</td>
+                    <td>{{ c.phone or '-' }}</td>
+                    <td>
+                        <a href="/ui/devices?customer={{ c.name|urlencode }}">
+                            <span class="badge bg-primary">{{ device_counts.get(c.name, 0) }} 台</span>
+                        </a>
+                    </td>
+                    <td class="text-muted small">{{ c.remark or '-' }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="/ui/customers?edit={{ c.name|urlencode }}"
+                               class="btn btn-sm btn-outline-primary" title="编辑"><i class="bi bi-pencil"></i></a>
+                            <form method="post" class="delete-form" action="/ui/customers/{{ c.name|urlencode }}/delete" style="display:inline" data-name="{{ c.name }}">
+                                <button class="btn btn-sm btn-outline-danger" title="删除"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not customers %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        暂无客户,先在上方添加甲方公司,再在设备表单中选择归属
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('form.delete-form').forEach(f => {
+    f.addEventListener('submit', e => {
+        if (!confirm('确认删除客户 ' + f.dataset.name + ' ?其名下设备的归属将显示为未指定。')) e.preventDefault();
+    });
+});
+</script>
+{% endblock %}

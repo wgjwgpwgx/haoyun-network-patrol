@@ -1,0 +1,2 @@
+Fan 1 State: Normal
+Fan 2 State: Normal

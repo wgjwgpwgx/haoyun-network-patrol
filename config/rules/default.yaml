@@ -1,0 +1,174 @@
+# 巡检规则定义文件（Comware 通用交换机）
+#
+# 字段说明：
+#   id            - 规则唯一标识
+#   check_name    - 对应的检查项名称（Driver parse_output 的 name 参数）
+#   name          - 规则名称
+#   description   - 规则描述
+#   severity      - 严重级别: critical / warning / info
+#   vendors       - 适用厂商列表，["*"] 表示所有厂商
+#   device_types  - 适用设备类型列表，["*"] 表示所有类型
+#   metric        - 评估字段，指向 parsed 中的值
+#   operator      - 比较运算符
+#   value         - 比较值
+#   suggestion    - 失败时的处理建议
+#
+# 规则语义：condition 描述"异常/问题"状态
+#   condition True → FAIL，condition False → PASS，metric None → UNKNOWN
+
+rules:
+  - id: "R001"
+    check_name: "cpu_usage"
+    name: "CPU 利用率过高"
+    description: "检查 CPU 利用率是否超过阈值"
+    severity: "critical"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在广播风暴、环路或攻击流量，必要时排查异常进程"
+
+  - id: "R002"
+    check_name: "memory_usage"
+    name: "内存利用率过高"
+    description: "检查内存利用率是否超过阈值"
+    severity: "critical"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在内存泄漏，清理不必要的缓存或会话表项"
+
+  - id: "R003"
+    check_name: "interface_status"
+    name: "存在 Down 状态接口"
+    description: "检查是否存在物理链路 Down 的接口"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "确认 Down 接口是否为预期状态（如未使用端口），否则检查线缆和对端设备"
+
+  - id: "R004"
+    check_name: "interface_errors"
+    name: "接口存在错误包"
+    description: "检查接口是否存在输入或输出错误包"
+    severity: "warning"
+    vendors: ["h3c"]
+    device_types: ["comware_switch"]
+    metric: "error_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查物理链路质量、双工模式匹配、是否存在 CRC 错误"
+
+  - id: "R005"
+    check_name: "telnet_service"
+    name: "Telnet 管理服务已启用"
+    description: "检查设备是否开启了 Telnet 服务（端口 23）"
+    severity: "warning"
+    vendors: ["h3c"]
+    device_types: ["comware_switch"]
+    metric: "telnet_enabled"
+    operator: "true"
+    suggestion: "Telnet 协议不安全，建议关闭并使用 SSH 管理设备"
+
+  # ── 九大类扩展检查(销号清单 #2;阈值可按现场调整) ──────────────
+
+  - id: "R006"
+    check_name: "temperature"
+    name: "设备温度异常"
+    description: "温度传感器状态非 Normal 或温度值超过 60℃"
+    severity: "critical"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查机房环境温度与设备风道,必要时清理滤网或更换风扇"
+
+  - id: "R007"
+    check_name: "transceiver"
+    name: "光模块光功率越限"
+    description: "存在收/发光功率超出厂商门限区间(DDM)的光模块"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "清洁光纤端面/更换光模块或尾纤,核对接衰"
+
+  - id: "R008"
+    check_name: "ospf_neighbor"
+    name: "OSPF 邻居状态异常"
+    description: "存在非 Full 状态的 OSPF 邻居"
+    severity: "critical"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查互联接口/区域参数/MTU/认证是否一致,查看邻居翻动日志"
+
+  - id: "R009"
+    check_name: "arp_count"
+    name: "ARP 表项规模过大"
+    description: "ARP 表项超过阈值(默认 5000,按设备型号 MAC 容量调整)"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "arp_count"
+    operator: "gt"
+    value: 5000
+    suggestion: "排查是否存在 ARP 攻击或私接设备,必要时配置 ARP 表项限制"
+
+  - id: "R010"
+    check_name: "storage"
+    name: "Flash 存储使用率过高"
+    description: "Flash 使用率超过 80%(日志盘满可导致设备异常)"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "used_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "清理历史日志/补丁文件,检查日志文件循环覆盖配置"
+
+  - id: "R011"
+    check_name: "config_diff"
+    name: "存在未保存配置"
+    description: "running 与 startup 配置不一致,设备重启将丢失变更"
+    severity: "critical"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "has_diff"
+    operator: "true"
+    suggestion: "确认变更无误后执行 save 保存配置"
+
+  - id: "R012"
+    check_name: "reboot_reason"
+    name: "上次为异常重启"
+    description: "上次重启原因为 crash/异常类"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "收集 reboot-info 与崩溃日志反馈厂商排查"
+
+  - id: "R013"
+    check_name: "lldp_neighbor"
+    name: "LLDP 邻居信息"
+    description: "拓扑信息展示项(任何邻居数均为通过;未开启 LLDP 显示 0)"
+    severity: "info"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "neighbor_count"
+    operator: "lt"
+    value: 0
+    suggestion: "建议全网设备开启 LLDP,以便拓扑绘制与影响面分析"

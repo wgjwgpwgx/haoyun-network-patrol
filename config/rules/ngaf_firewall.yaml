@@ -1,0 +1,46 @@
+# 深信服 NGAF 防火墙巡检规则
+
+rules:
+  - id: "SF001"
+    check_name: "cpu_usage"
+    name: "CPU 利用率过高"
+    severity: "critical"
+    vendors: ["sangfor"]
+    device_types: ["ngaf_firewall"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在攻击流量或会话表溢出"
+
+  - id: "SF002"
+    check_name: "memory_usage"
+    name: "内存利用率过高"
+    severity: "critical"
+    vendors: ["sangfor"]
+    device_types: ["ngaf_firewall"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查会话表是否过大或存在内存泄漏"
+
+  - id: "SF003"
+    check_name: "interface_status"
+    name: "存在 Down 状态接口"
+    severity: "warning"
+    vendors: ["sangfor"]
+    device_types: ["ngaf_firewall"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查物理链路和接口配置"
+
+  - id: "SF004"
+    check_name: "logbuffer"
+    name: "日志中存在告警"
+    severity: "warning"
+    vendors: ["sangfor"]
+    device_types: ["ngaf_firewall"]
+    metric: "error_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查攻击告警和系统异常日志"

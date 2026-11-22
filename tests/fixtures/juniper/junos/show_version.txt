@@ -1,0 +1,9 @@
+Hostname: sw-core-01
+Model: ex4300-48t
+Junos: 21.4R3-S5.2
+JUNOS Base OS Software Suite [21.4R3-S5.2]
+JUNOS Kernel Software Suite [21.4R3-S5.2]
+JUNOS Online Documentation [21.4R3-S5.2]
+JUNOS Services AACL Plugin [21.4R3-S5.2]
+JUNOS Services Application Level Gateway [21.4R3-S5.2]
+JUNOS Crypto Software Suite [21.4R3-S5.2]

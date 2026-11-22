@@ -1,0 +1,1 @@
+{"code": 0, "msg": "success", "data": {"device_model": "NGAF-2020", "firmware_version": "8.0.45", "sn": "SF2020ABC12345", "uptime": "120 days 5 hours", "cpu_model": "Intel Xeon", "total_memory": 8589934592, "ha_status": "active"}}

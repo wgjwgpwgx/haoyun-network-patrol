@@ -1,0 +1,16 @@
+Interface            Link Speed   Duplex  Type PVID
+GE1/0/1              UP   1G      full    A    10
+GE1/0/2              UP   1G      full    A    10
+GE1/0/3              DOWN auto    A       A    1
+GE1/0/4              UP   100M    full    A    20
+GE1/0/5              DOWN auto    A       A    1
+GE1/0/6              UP   1G      full    A    10
+GE1/0/7              UP   1G      full    A    30
+GE1/0/8              DOWN auto    A       A    1
+GE1/0/9              UP   1G      full    A    10
+GE1/0/10             UP   1G      full    A    10
+GE1/0/11             DOWN auto    A       A    1
+GE1/0/12             UP   1G      full    A    10
+XGE1/0/1             UP   10G     full    A    1
+XGE1/0/2             DOWN auto    A       A    1
+MGE0/0/0             UP   1G      full    A    1

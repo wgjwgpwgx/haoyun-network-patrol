@@ -1,0 +1,26 @@
+PHY: Physical
+*down: administratively down
+^down: standby
+(l): loopback
+(s): spoofing
+(b): BFD down
+(e): ETHOAM down
+(d): Damping down
+(DL): DLDP down
+(T): Test‑mode down
+
+Interface                         PHY   Protocol InUti OutUti   inErrors  outErrors
+GigabitEthernet0/0/1              up         up  0.01%  0.03%          0          0
+GigabitEthernet0/0/2              up         up  0.02%  0.01%          0          0
+GigabitEthernet0/0/3            down       down     0%     0%          0          0
+GigabitEthernet0/0/4              up         up  0.00%  0.02%          0          0
+GigabitEthernet0/0/5‑48         down       down     0%     0%          0          0
+XGigabitEthernet0/0/1             up         up  0.12%  0.21%          0          0
+XGigabitEthernet0/0/2             up         up  0.08%  0.15%          0          0
+XGigabitEthernet0/0/3            down       down     0%     0%          0          0
+XGigabitEthernet0/0/4            down       down     0%     0%          0          0
+Vlanif10                          up         up      ‑      ‑          0          0
+Vlanif20                          up         up      ‑      ‑          0          0
+Vlanif30                          up         up      ‑      ‑          0          0
+Vlanif40                         down       down      ‑      ‑          0          0
+MEth0/0/0                         up         up  0.00%  0.00%          0          0

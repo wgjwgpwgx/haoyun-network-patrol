@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}报告管理 - 昊云网络巡检助手{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> 报告管理</h5>
+        <div class="d-flex gap-2">
+        <a href="/ui/reports/compare" class="btn btn-outline-info btn-sm"><i class="bi bi-arrow-left-right"></i> 多期对比</a>
+        </div>
+    <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> 刷新</button>
+</div>
+
+<!-- 批量操作栏(不用 d-flex 类:其 display:flex!important 会压过内联隐藏) -->
+<div class="gap-2 mb-3" id="batchBar" style="display:none">
+    <span class="align-self-center text-muted" id="selectedCount">已选 0 份</span>
+    <button class="btn btn-sm btn-danger" onclick="batchDelete()"><i class="bi bi-trash"></i> 批量删除</button>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th style="width:40px"><input type="checkbox" id="selectAll" class="form-check-input"></th>
+                    <th>文件名</th>
+                    <th>大小</th>
+                    <th>生成时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in reports %}
+            <tr>
+                <td><input type="checkbox" class="form-check-input report-cb" value="{{ r.name }}" onchange="updateBatchBar()"></td>
+                <td><i class="bi bi-file-earmark-text text-primary"></i> {{ r.name }}</td>
+                <td>{{ r.size }}</td>
+                <td>{{ r.modified }}</td>
+                <td>
+                    <div class="btn-group">
+                        {% if r.has_preview %}
+                        <a href="/ui/reports/{{ r.name }}/preview" class="btn btn-sm btn-outline-success" title="预览"><i class="bi bi-eye"></i> 预览</a>
+                        {% endif %}
+                        <a href="/ui/reports/{{ r.name }}" class="btn btn-sm btn-outline-info" title="查看" target="_blank"><i class="bi bi-box-arrow-up-right"></i> 查看</a>
+                        <a href="/ui/reports/{{ r.name }}/download" class="btn btn-sm btn-outline-primary" title="下载"><i class="bi bi-download"></i> 下载</a>
+                        {% if r.has_preview %}
+                        <a href="/ui/reports/{{ r.name }}/download-excel" class="btn btn-sm btn-outline-success" title="导出 Excel 台账报告"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+                        <a href="/ui/reports/{{ r.name }}/confirmation" target="_blank" class="btn btn-sm btn-outline-dark" title="打印巡检确认单(A4 签字版)"><i class="bi bi-printer"></i> 确认单</a>
+                        {% endif %}
+                        {% if r.has_preview and ai_enabled %}
+                        <form method="post" class="ai-form" action="/ui/reports/{{ r.name|urlencode }}/ai-analysis" style="display:inline">
+                            <button class="btn btn-sm btn-outline-warning" title="{{ '重新 AI 分析' if r.has_ai else 'AI 大模型分析' }}">
+                                <i class="bi bi-stars{% if r.has_ai %}-fill{% endif %}"></i> AI{% if r.has_ai %} ·{% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                        <form method="post" class="delete-form" action="/ui/reports/{{ r.name|urlencode }}/delete" style="display:inline" data-name="{{ r.name }}">
+                            <button class="btn btn-sm btn-outline-danger" title="删除"><i class="bi bi-trash"></i> 删除</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if not reports %}
+    <div class="text-center text-muted py-4">暂无报告，发起巡检后自动生成</div>
+    {% endif %}
+</div>
+
+<!-- 批量删除表单 -->
+<form id="batchDeleteForm" method="post" action="/ui/reports/batch-delete" style="display:none"></form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全选/反选
+document.getElementById('selectAll').addEventListener('change', function() {
+    document.querySelectorAll('.report-cb').forEach(cb => cb.checked = this.checked);
+    updateBatchBar();
+});
+
+// 更新批量操作栏
+function updateBatchBar() {
+    const checked = document.querySelectorAll('.report-cb:checked');
+    const bar = document.getElementById('batchBar');
+    if (checked.length > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('selectedCount').textContent = '已选 ' + checked.length + ' 份';
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+// 批量删除
+function batchDelete() {
+    const names = Array.from(document.querySelectorAll('.report-cb:checked')).map(cb => cb.value);
+    if (!confirm('确认删除选中的 ' + names.length + ' 份报告？删除后不可恢复。')) return;
+    const form = document.getElementById('batchDeleteForm');
+    form.innerHTML = '';
+    names.forEach(n => {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'filenames'; input.value = n;
+        form.appendChild(input);
+    });
+    form.submit();
+}
+
+// 单条删除确认
+document.querySelectorAll('form.delete-form').forEach(f => {
+    f.addEventListener('submit', e => {
+        if (!confirm('确认删除报告 ' + f.dataset.name + ' ？删除后不可恢复。')) e.preventDefault();
+    });
+});
+
+// AI 分析确认与加载提示
+document.querySelectorAll('form.ai-form').forEach(f => {
+    f.addEventListener('submit', () => {
+        const btn = f.querySelector('button');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> AI 分析中...';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,5 @@
+Local Address        Foreign Address      State        Slot
+0.0.0.0:23           0.0.0.0:0            LISTEN       0
+0.0.0.0:22           0.0.0.0:0            LISTEN       0
+192.168.1.1:22       192.168.1.100:12345  ESTABLISHED  0
+192.168.1.1:23       192.168.1.100:54321  ESTABLISHED  0

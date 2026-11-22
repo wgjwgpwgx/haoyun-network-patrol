@@ -1,0 +1,98 @@
+# 等保 2.0 网络设备安全基线规则包(销号清单 #4)
+#
+# 依据:等保 2.0 基本要求(身份鉴别/访问控制/安全审计/时间同步)+
+# 华为/H3C 官方加固指南。适用于华为 VRP / H3C Comware 系配置特征,
+# 标注:待真机验证。
+#
+# 启用方式(CLI):python -m patrol -r config/rules/baseline_dengbao.yaml
+# 也可与 default.yaml 合并加载(两文件规则同时生效)。
+# 嵌套检查项(login_lock 等)由 config_cur 自动展开,无需额外命令。
+
+rules:
+  - id: "D001"
+    check_name: "login_lock"
+    name: "未配置登录失败锁定"
+    description: "等保 8.1.4.1 身份鉴别:应配置登录失败处理(常见 5 次锁定 15 分钟)"
+    severity: "critical"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "login_locked"
+    operator: "false"
+    suggestion: "华为:aaa 视图 local-aaa-user password policy 配置 retry/lock;H3C:password-control 配置 attempt 与 lock"
+
+  - id: "D002"
+    check_name: "password_policy"
+    name: "未配置口令复杂度策略"
+    description: "口令最短长度/复杂度未配置(等保要求长度≥8 且含复杂度)"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "policy_ok"
+    operator: "false"
+    suggestion: "配置口令最小长度 8 位以上并开启复杂度检查"
+
+  - id: "D003"
+    check_name: "telnet_service"
+    name: "Telnet 远程管理已启用"
+    description: "等保要求远程管理使用加密协议,禁用明文 Telnet"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "telnet_enabled"
+    operator: "true"
+    suggestion: "关闭 telnet server,VTY 限定 protocol inbound ssh"
+
+  - id: "D004"
+    check_name: "mgmt_acl"
+    name: "管理通道未限制源地址"
+    description: "VTY 未配置入向 ACL,任意源可尝试登录"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "acl_enabled"
+    operator: "false"
+    suggestion: "VTY 下配置 acl XXXX inbound,仅允许运维网段登录"
+
+  - id: "D005"
+    check_name: "snmp_community"
+    name: "SNMP 使用默认团体字"
+    description: "public/private 默认团体字(等保访问控制要求)"
+    severity: "critical"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "has_dangerous"
+    operator: "true"
+    suggestion: "修改为复杂团体字并限制源,或升级 SNMPv3"
+
+  - id: "D006"
+    check_name: "ntp_status"
+    name: "NTP 时钟未同步"
+    description: "等保安全审计要求:审计记录需可靠时间戳,设备应与上级 NTP 同步"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "synced"
+    operator: "false"
+    suggestion: "配置 ntp-service unicast-server(建议双源)并确认 clock status: synchronized"
+
+  - id: "D007"
+    check_name: "syslog_external"
+    name: "未配置日志外发"
+    description: "等保要求审计记录外发留存≥6 个月,本机日志易随重启丢失"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "enabled"
+    operator: "false"
+    suggestion: "配置 info-center loghost / logging host 指向日志服务器"
+
+  - id: "D008"
+    check_name: "vty_idle_timeout"
+    name: "VTY 空闲超时未配置或过长"
+    description: "登录会话空闲超时缺失或超过 10 分钟"
+    severity: "warning"
+    vendors: ["*"]
+    device_types: ["*"]
+    metric: "timeout_ok"
+    operator: "false"
+    suggestion: "VTY 下配置 idle-timeout 5 10(5 分 10 秒以内)"

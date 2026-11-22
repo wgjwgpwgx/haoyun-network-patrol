@@ -1,0 +1,13 @@
+#
+sysname HW_SW_CORE_02
+#
+stelnet server enable
+#
+user-interface vty 0 4
+ authentication-mode aaa
+ protocol inbound ssh
+#
+stp mode rstp
+stp enable
+#
+return

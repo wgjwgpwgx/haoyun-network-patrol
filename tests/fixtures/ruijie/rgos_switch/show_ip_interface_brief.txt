@@ -1,0 +1,6 @@
+Interface              IP-Address(Pri)      IP-Address(Sec)  Status       Protocol
+Vlan 10                192.168.162.34/24      no address       up           up
+Vlan 20                192.168.163.1/24       no address       up           up
+Vlan 30                192.168.164.1/24       no address       up           up
+Vlan 40                no address           no address       down         down
+MGMT 0                 192.168.1.10/24      no address       up           up

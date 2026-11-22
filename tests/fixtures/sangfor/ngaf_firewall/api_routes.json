@@ -1,0 +1,1 @@
+{"code": 0, "msg": "success", "data": {"routes": [{"dest": "0.0.0.0/0", "next_hop": "10.0.0.1"}, {"dest": "10.0.0.0/24", "next_hop": "direct"}]}}

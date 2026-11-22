@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}设备知识库 - 巡检助手{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="bi bi-database"></i> 设备知识库(经验沉淀)</h5>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-warning btn-sm" id="btnExport" title="导出知识库+规则+样式为交接包" onclick="if(confirm('导出交接包?')){fetch('/ui/knowledge/export',{method:'POST'}).then(r=>r.blob()).then(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='巡检助手交接包.zip';a.click()})}">
+            <i class="bi bi-box-arrow-up"></i> 一键交接</button>
+        <button class="btn btn-outline-secondary btn-sm" id="btnSeed" title="载入五厂商内置样例语料">
+            <i class="bi bi-box-seam"></i> 内置样例</button>
+        <button class="btn btn-outline-secondary btn-sm" id="btnReports" title="导入 output 下全部历史巡检报告">
+            <i class="bi bi-archive"></i> 导入本机报告</button>
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
+            <i class="bi bi-file-earmark-arrow-up"></i> 导入历史资料</button>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<!-- 搜索框 -->
+<form method="get" action="/ui/knowledge" class="mb-3">
+    <div class="input-group">
+        <input type="text" name="q" class="form-control" value="{{ q or '' }}"
+               placeholder="搜索回显内容(如: cpu S5735 OSPF ...)">
+        <button class="btn btn-primary"><i class="bi bi-search"></i> 搜索</button>
+        {% if q %}<a href="/ui/knowledge" class="btn btn-outline-secondary">清除</a>{% endif %}
+    </div>
+</form>
+
+{% if q %}
+<!-- 搜索结果 -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <b>搜索"{{ q }}"</b> <span class="text-muted">找到 {{ search_results|length }} 条</span>
+        <table class="table table-sm table-hover mt-2 mb-0">
+            <thead><tr><th>客户</th><th>设备</th><th>检查项</th><th>命令</th><th>匹配片段</th></tr></thead>
+            <tbody>
+            {% for r in search_results %}
+            <tr>
+                <td>{{ r.customer }}</td>
+                <td><a href="/ui/knowledge?customer={{ r.customer|urlencode }}&device={{ r.device|urlencode }}">{{ r.device }}</a></td>
+                <td>{{ r.check_name }}</td>
+                <td><code class="small">{{ r.command[:30] }}</code></td>
+                <td class="small text-muted">{{ r.snippet }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">无匹配结果</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if not snapshot %}
+<!-- 层级:客户 → 设备 → 快照列表 -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="mb-2">
+            <span class="text-muted">客户:</span>
+            {% if customer %}
+            <a href="/ui/knowledge">全部</a> / <b>{{ customer }}</b>
+            {% else %}
+            <b>全部</b>
+            {% endif %}
+            {% if device %} &nbsp;<span class="text-muted">设备:</span> <b>{{ device }}</b>{% endif %}
+        </div>
+        <table class="table table-hover mb-0">
+            <thead><tr><th>{{ '设备' if not device else '快照时间' }}</th>
+                {% if device %}<th>来源</th><th>型号</th><th>回显条数</th><th>操作</th>{% endif %}</tr></thead>
+            <tbody>
+            {% for row in rows %}
+            <tr>
+                {% if not device %}
+                <td class="d-flex align-items-center gap-2">
+                    <a href="/ui/knowledge?customer={{ row.name|urlencode }}">{{ row.name }}</a>
+                    <button class="btn btn-sm btn-outline-danger py-0 del-customer"
+                            data-name="{{ row.name }}" title="删除此客户全部数据">
+                        <i class="bi bi-trash"></i></button>
+                </td>
+                {% else %}
+                <td><a href="/ui/knowledge?customer={{ customer|urlencode }}&device={{ device|urlencode }}&snapshot={{ row.file|urlencode }}">{{ row.captured_at }} ({{ row.source }})</a></td>
+                <td>{{ row.source }}</td>
+                <td>{{ row.model or '-' }}</td>
+                <td>{{ row.items }}</td>
+                <td>
+                    <form method="post" class="delete-form"
+                          action="/ui/knowledge/delete?customer={{ customer|urlencode }}&device={{ device|urlencode }}&snapshot={{ row.file|urlencode }}">
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% else %}
+            <tr><td class="text-center text-muted py-4">
+                暂无知识库数据。发起一次巡检会自动沉淀全部回显;也可点右上角导入历史资料。</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if snapshot %}
+<!-- 快照详情:全部命令回显 -->
+<div class="card">
+    <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <b>{{ customer }} / {{ device }}</b>
+                <span class="text-muted ms-2">{{ snapshot.device.model or '' }} {{ snapshot.device.software_version or '' }}</span>
+            </div>
+            <a href="/ui/knowledge?customer={{ customer|urlencode }}&device={{ device|urlencode }}" class="btn btn-sm btn-outline-secondary">返回列表</a>
+        </div>
+        <div class="mb-2">
+            <button class="btn btn-sm btn-outline-success" id="btnSim"
+                    data-customer="{{ customer }}" data-device="{{ device }}">
+                <i class="bi bi-hdd-network"></i> 用此设备起模拟器(无真机演示/自测)</button>
+            <span class="text-muted small ms-2" id="simHint"></span>
+        </div>
+        {% for it in snapshot.items %}
+        <details class="mb-2">
+            <summary class="text-primary"><code>{{ it.command }}</code>
+                <span class="text-muted small">({{ it.name }})</span>
+                <button class="btn btn-sm btn-outline-secondary py-0 kb-copilot"
+                        data-vendor="{{ snapshot.device.vendor }}"
+                        data-type="{{ snapshot.device.device_type }}"
+                        data-check="{{ it.name }}">AI 解析</button></summary>
+            <pre class="bg-light border rounded p-2 mt-1 kb-raw"
+                 style="font-size:12px;max-height:420px;overflow:auto">{{ it.raw_output }}</pre>
+        </details>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 导入弹窗 -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" action="/ui/knowledge/import"
+              enctype="multipart/form-data">
+            <div class="modal-header"><h6 class="modal-title">导入历史巡检资料</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p class="text-muted small">支持 .txt/.log 纯文本、.docx Word 报告;系统自动切分"命令-回显"并存入知识库。</p>
+                <label class="form-label">客户(甲方公司)</label>
+                <input type="text" name="customer" class="form-control" required placeholder="如:XX公司">
+                <label class="form-label mt-2">设备名(留空用文件名)</label>
+                <input type="text" name="device" class="form-control" placeholder="如:核心交换机">
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="replace" id="replaceCheck">
+                    <label class="form-check-label small" for="replaceCheck">
+                        替换该设备已有快照(不勾选则新增)
+                    </label>
+                </div>
+                <label class="form-label mt-2">或直接粘贴回显文本</label>
+                <textarea name="text" class="form-control" rows="4"
+                          placeholder="display version&#10;Huawei Versatile Routing Platform..."></textarea>
+                <label class="form-label mt-2">或上传文件</label>
+                <input type="file" name="file" class="form-control" accept=".txt,.log,.docx">
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-upload"></i> 导入</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+for (const [id, url, msg] of [
+    ['btnSeed', '/ui/knowledge/seed', '载入内置五厂商样例语料?'],
+    ['btnReports', '/ui/knowledge/import-reports', '导入 output 下全部历史巡检报告?']]) {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', async () => {
+        if (!confirm(msg)) return;
+        b.disabled = true;
+        const r = await (await fetch(url, {method: 'POST'})).json();
+        alert(r.message); location.reload();
+    });
+}
+document.querySelectorAll('.kb-copilot').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const check = btn.dataset.check;
+        const pre = btn.closest('details').querySelector('.kb-raw');
+        const raw = pre ? pre.textContent : '';
+        if (!raw.trim()) { alert('该条无回显'); return; }
+        btn.disabled = true; btn.textContent = 'AI 解析中…';
+        try {
+            const body = new URLSearchParams({
+                check_name: check, raw_output: raw,
+                vendor: btn.dataset.vendor, device_type: btn.dataset.type});
+            const data = await (await fetch('/ui/knowledge/copilot', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body})).json();
+            if (!data.ok) { alert('生成失败:' + data.error); return; }
+            if (!confirm('「' + check + '」解析规则试跑结果:
+'
+                + JSON.stringify(data.sample, null, 2) + '
+
+确认入库?')) return;
+            const cr = await (await fetch('/ui/copilot/confirm', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    vendor: data.vendor, device_type: data.device_type,
+                    check_name: data.check_name,
+                    fields_json: JSON.stringify(data.fields)})})).json();
+            alert(cr.ok ? '已入库,下次巡检自动生效:' + cr.saved_to
+                        : '入库失败:' + cr.error);
+            if (cr.ok) { btn.textContent = '已入库'; btn.classList.replace('btn-outline-secondary', 'btn-success'); }
+        } catch (e) { alert('请求失败:' + e); }
+        finally { btn.disabled = false; if (btn.textContent === 'AI 解析中…') btn.textContent = 'AI 解析'; }
+    });
+});
+const simBtn = document.getElementById('btnSim');
+if (simBtn) simBtn.addEventListener('click', async () => {
+    const body = new URLSearchParams({
+        customer: simBtn.dataset.customer, device: simBtn.dataset.device});
+    const r = await (await fetch('/ui/knowledge/simulate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body})).json();
+    if (r.ok) {
+        document.getElementById('simHint').textContent =
+            '运行中 → Telnet 127.0.0.1:' + r.port + '(账号密码任意)';
+        alert('模拟设备已启动:
+设备档案 → 登录方式 Telnet / IP 127.0.0.1 / 端口 ' + r.port
+              + '
+账号密码任意,发起巡检即可全流程演示。');
+    } else { alert('启动失败:' + r.error); }
+});
+</script>
+{% endblock %}

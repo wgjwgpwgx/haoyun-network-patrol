@@ -1,0 +1,119 @@
+# 华为 VRP 交换机巡检规则
+# TODO: 阈值需根据实际环境调整
+
+rules:
+  - id: "H001"
+    check_name: "cpu_usage"
+    name: "CPU 利用率过高"
+    description: "CPU 利用率超过阈值"
+    severity: "critical"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在广播风暴或异常进程"
+
+  - id: "H002"
+    check_name: "memory_usage"
+    name: "内存利用率过高"
+    description: "内存利用率超过阈值"
+    severity: "critical"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "usage_percent"
+    operator: "gt"
+    value: 80
+    suggestion: "检查是否存在内存泄漏"
+
+  - id: "H003"
+    check_name: "interface_status"
+    name: "存在 Down 状态接口"
+    description: "存在物理或协议 Down 的接口"
+    severity: "warning"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "确认 Down 接口是否为预期状态"
+
+  - id: "H004"
+    check_name: "fan_status"
+    name: "风扇异常"
+    description: "风扇状态异常"
+    severity: "critical"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查风扇模块"
+
+  - id: "H005"
+    check_name: "power_status"
+    name: "电源异常"
+    description: "电源状态异常"
+    severity: "critical"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查电源模块"
+
+  - id: "H006"
+    check_name: "logbuffer"
+    name: "日志中存在告警"
+    description: "存在严重日志"
+    severity: "warning"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "error_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查告警日志内容"
+
+  - id: "H007"
+    check_name: "telnet_service"
+    name: "Telnet 服务已启用"
+    description: "设备开启了 Telnet 服务"
+    severity: "warning"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "telnet_enabled"
+    operator: "true"
+    suggestion: "关闭 Telnet，使用 SSH 管理"
+
+  - id: "H008"
+    check_name: "snmp_community"
+    name: "SNMP 使用默认 Community"
+    description: "SNMP 使用 public/private"
+    severity: "critical"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "has_dangerous"
+    operator: "true"
+    suggestion: "修改 SNMP Community 或使用 SNMPv3"
+
+  - id: "H009"
+    check_name: "vty_auth"
+    name: "VTY 未配置认证"
+    description: "VTY 未启用 AAA 认证"
+    severity: "critical"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "has_authentication"
+    operator: "false"
+    suggestion: "配置 VTY 认证"
+
+  - id: "H010"
+    check_name: "stp_status"
+    name: "生成树未启用"
+    description: "STP 未启用"
+    severity: "critical"
+    vendors: ["huawei"]
+    device_types: ["vrp_switch"]
+    metric: "stp_enabled"
+    operator: "false"
+    suggestion: "启用 STP"

@@ -1,0 +1,8 @@
+Directory of flash:/
+
+  Idx  Attr     Size(Byte)  Date        Time(LMT)  FileName
+    0  drw-              -  Feb 19 2026 15:20:36   src
+    1  -rw-        128,932  Nov 13 2026 20:00:11   logfile
+    2  -rw-          5,242  Sep 01 2026 08:00:00   vrpcfg.zip
+
+  255,872 KB total (128,932 KB free)

@@ -1,0 +1,39 @@
+# H3C SecPath 防火墙巡检规则
+# 接口/CPU/内存检查复用 default.yaml 通配规则;本文件补充防火墙特有规则。
+
+rules:
+  - id: "P001"
+    check_name: "session_table"
+    name: "防火墙会话数过高"
+    description: "会话表规模超过阈值"
+    severity: "warning"
+    vendors: ["h3c"]
+    device_types: ["secpath_firewall"]
+    metric: "session_count"
+    operator: "gt"
+    value: 500000
+    suggestion: "检查是否存在攻击流量或业务激增,按设备型号会话容量评估扩容"
+
+  - id: "P002"
+    check_name: "fan_status"
+    name: "风扇状态异常"
+    description: "存在状态非 Normal 的风扇"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["secpath_firewall"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查风扇模块与风道,必要时更换"
+
+  - id: "P003"
+    check_name: "power_status"
+    name: "电源模块状态异常"
+    description: "存在状态非 Normal 的电源模块"
+    severity: "critical"
+    vendors: ["h3c"]
+    device_types: ["secpath_firewall"]
+    metric: "abnormal_count"
+    operator: "gt"
+    value: 0
+    suggestion: "检查电源线与电源模块,必要时更换;确认冗余电源配置"
