@@ -46,3 +46,37 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
+
+  # 信创 Linux 绿色包:manylinux2014 容器(glibc 2.17 基线)构建,
+  # 兼容银河麒麟 V10 / 统信 UOS;双架构 x86_64 + aarch64(飞腾/鲲鹏)。
+  # manylinux 容器自带 /opt/python 多版本解释器,无需 setup-python。
+  linux-package:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            image: quay.io/pypa/manylinux2014_x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+            image: quay.io/pypa/manylinux2014_aarch64
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.image }}
+    env:
+      PY: /opt/python/cp312-cp312/bin/python
+    steps:
+      - run: git config --global --add safe.directory /__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+      - uses: actions/checkout@v4
+      - name: 安装依赖与 PyInstaller
+        run: $PY -m pip install -e . pyinstaller
+      - name: 构建 Linux 绿色包
+        run: $PY packaging/build_portable_linux.py --arch ${{ matrix.arch }}
+      - name: 容器内冒烟(同 glibc 基线环境实跑二进制)
+        run: |
+          tar xzf dist/haoyun-patrol-v*-linux-${{ matrix.arch }}.tar.gz -C /tmp
+          /tmp/haoyun-patrol/patrol-assistant --help
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.tar.gz

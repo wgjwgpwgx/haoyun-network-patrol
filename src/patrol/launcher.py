@@ -19,7 +19,7 @@ import webbrowser
 from pathlib import Path
 
 APP_NAME = "昊云网络巡检助手"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 DEFAULT_PORT = 8765
 
 
@@ -162,7 +162,13 @@ def main() -> int:
         return 0
 
     # 双击默认：打开桌面小工具窗口(原生界面,无需浏览器)
-    from patrol.desktop.app import run as run_desktop
+    try:
+        from patrol.desktop.app import run as run_desktop
+    except ImportError:
+        # 无图形库环境(如 Linux 绿色包):自动转 Web 模式,功能不减
+        print("[提示] 当前环境无图形库(Tk),已自动切换 Web 模式,")
+        print("       请用浏览器访问输出中的 /ui 地址。")
+        return run_web(root)
 
     return run_desktop()
 

@@ -71,7 +71,7 @@ class TestEvaluateCondition:
 
     def test_in(self):
         assert _evaluate_condition("h3c", "in", ["h3c", "huawei"]) is True
-        assert _evaluate_condition("cisco", "in", ["h3c", "huawei"]) is False
+        assert _evaluate_condition("zte", "in", ["h3c", "huawei"]) is False
 
     def test_exists(self):
         assert _evaluate_condition(12, "exists", None) is True

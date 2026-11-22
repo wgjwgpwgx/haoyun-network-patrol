@@ -1,0 +1,16 @@
+hostname mp-acc
+!
+ssh-server enable
+!
+snmp-server community public RO
+!
+spanning-tree mode rstp
+!
+interface GigabitEthernet0/1
+ description TO-CORE
+!
+line vty 0 4
+ login local
+ transport input ssh
+!
+end

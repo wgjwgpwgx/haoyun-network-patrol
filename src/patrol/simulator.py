@@ -3,7 +3,7 @@
 用法:
     python -m patrol.simulator --seed huawei            # 内置华为样例
     python -m patrol.simulator --knowledge 客户/设备     # 知识库快照
-    python -m patrol.simulator --port 9123 --seed cisco
+    python -m patrol.simulator --port 9123 --seed zte
 
 启动后:本项目设备档案 → 登录方式 Telnet、IP 127.0.0.1、端口见输出、
 账号密码任意 → 发起巡检即可全流程演示。
@@ -16,8 +16,8 @@ import argparse
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="模拟网络设备(Telnet)")
-    parser.add_argument("--seed", help="内置样例厂商: huawei/h3c/cisco/"
-                        "juniper/ruijie")
+    parser.add_argument("--seed", help="内置样例厂商: huawei/h3c/zte/"
+                        "maipu/ruijie")
     parser.add_argument("--knowledge", help="知识库 客户/设备 名")
     parser.add_argument("--port", type=int, default=9123)
     args = parser.parse_args()

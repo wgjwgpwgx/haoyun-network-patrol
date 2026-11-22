@@ -189,7 +189,7 @@ def import_text(text: str, customer: str, device: str,
     if not model:
         m = re.search(
             r"(?:型号|Model)\s*[:：]\s*(\S+)", text) or re.search(
-            r"HUAWEI\s+(\S+)|H3C\s+(\S+)|cisco\s+(\S+)", text, re.IGNORECASE)
+            r"HUAWEI\s+(\S+)|H3C\s+(\S+)|ZXR10\s+(\S+)|MyPower\s+(\S+)", text, re.IGNORECASE)
         if m:
             model = next(g for g in m.groups() if g)
     return save_snapshot(

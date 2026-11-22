@@ -1,0 +1,4 @@
+Local Interface    Neighbor Device    Neighbor Port
+Gi0/1              core-sw            Gi1/0/24
+Gi0/2              ap-floor3          eth0
+Vlan1              fw-gw              ge0

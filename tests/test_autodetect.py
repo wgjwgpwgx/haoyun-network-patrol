@@ -26,15 +26,15 @@ class TestDetectFromVersion:
         r = detect_from_version(_fx("h3c/comware_switch/display_version.txt"))
         assert r["vendor"] == "h3c" and r["device_type"] == "comware_switch"
 
-    def test_cisco_fixture(self):
-        r = detect_from_version(_fx("cisco/ios/show_version.txt"))
-        assert r["vendor"] == "cisco" and r["device_type"] == "ios_switch"
-        assert r["model"] == "WS-C2960S-48TS-L"
+    def test_zte_fixture(self):
+        r = detect_from_version(_fx("zte/zxr10_switch/show_version.txt"))
+        assert r["vendor"] == "zte" and r["device_type"] == "zxr10_switch"
+        assert r["model"] == "5250-28PS-E"
 
-    def test_juniper_fixture(self):
-        r = detect_from_version(_fx("juniper/junos/show_version.txt"))
-        assert r["vendor"] == "juniper" and r["device_type"] == "junos"
-        assert r["model"] == "ex4300-48t"
+    def test_maipu_fixture(self):
+        r = detect_from_version(_fx("maipu/mypower_switch/show_version.txt"))
+        assert r["vendor"] == "maipu" and r["device_type"] == "mypower_switch"
+        assert r["model"] == "S3100V2-24GT4XS"
 
     def test_ruijie_inline(self):
         r = detect_from_version(
@@ -89,12 +89,11 @@ class TestProbeDevice:
     @patch("netmiko.ConnectHandler")
     def test_show_version_fallback_command(self, mock_ch):
         conn = MagicMock()
-        # display version 空 → 尝试 show version
-        # display version 空 → 尝试 show version 返回 cisco 回显
-        conn.send_command.side_effect = ["", _fx("cisco/ios/show_version.txt")]
+        # display version 空 → 尝试 show version(用中兴回显驱动 fallback 分支)
+        conn.send_command.side_effect = ["", _fx("zte/zxr10_switch/show_version.txt")]
         mock_ch.return_value = conn
         r = probe_device("192.0.2.1", "u", "p")
-        assert r["ok"] and r["result"]["vendor"] == "cisco"
+        assert r["ok"] and r["result"]["vendor"] == "zte"
 
 
 class TestWebDetectRoute:

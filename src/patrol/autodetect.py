@@ -19,17 +19,19 @@ _VERSION_SIGNATURES: list[tuple[str, tuple[str, str]]] = [
     (r"S7506|S75\d\d", ("h3c", "s7506e")),
     (r"SecPath", ("h3c", "secpath_firewall")),
     (r"Comware|H3C|Hangzhou\s+H3C", ("h3c", "comware_switch")),
-    (r"Cisco\s+IOS\s+Software", ("cisco", "ios_switch")),
-    (r"Junos:|JUNOS\s+Base\s+OS", ("juniper", "junos")),
     (r"Ruijie|RGOS", ("ruijie", "rgos_switch")),
+    (r"ZXR10|ZTE\s+ZXR10", ("zte", "zxr10_switch")),
+    (r"MyPower|Maipu", ("maipu", "mypower_switch")),
 ]
 
 # 型号提取正则(按厂商)
 _MODEL_PATTERNS = [
     (r"HUAWEI\s+(\S+?)(?:\s+uptime|\s*\()", "huawei"),
     (r"H3C\s+(\S+?)(?:\s+uptime|\s*\()", "h3c"),
-    (r"cisco\s+(\S+)\s+.*processor", "cisco"),
-    (r"Model:\s*(\S+)", "juniper"),
+    (r"ZXR10\s+(\S+)\s+uptime", "zte"),
+    (r"ZXR10\s+(\S+)\s+Series", "zte"),
+    (r"MyPower\s+(\S+)\s+uptime", "maipu"),
+    (r"MyPower\s+(\S+)\s+Software", "maipu"),
     (r"(S\d{4}[A-Za-z0-9\-]*)", None),
     (r"(USG\s?\d{3,4})", None),
 ]
@@ -38,7 +40,6 @@ _MODEL_PATTERNS = [
 _VERSION_PATTERNS = [
     r"Version\s+([\d()A-Za-z.\-]+)",
     r"V\d{3}R\d{3}C\d{2,3}(?:SPC\d{3})?",
-    r"Junos:\s*(\S+)",
 ]
 
 

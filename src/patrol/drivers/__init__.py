@@ -8,5 +8,5 @@ import patrol.drivers.huawei  # noqa: F401
 import patrol.drivers.ruijie  # noqa: F401
 import patrol.drivers.sangfor  # noqa: F401
 import patrol.drivers.dptech  # noqa: F401
-import patrol.drivers.juniper  # noqa: F401
-import patrol.drivers.cisco  # noqa: F401
+import patrol.drivers.zte  # noqa: F401
+import patrol.drivers.maipu  # noqa: F401

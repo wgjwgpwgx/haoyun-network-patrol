@@ -1,0 +1,6 @@
+Codes: C - connected, S - static, R - RIP, O - OSPF, B - BGP
+Gateway of last resort is 192.168.10.254 to network 0.0.0.0
+
+S*   0.0.0.0/0 [1/0] via 192.168.10.254, Vlan1
+C    192.168.10.0/24 is directly connected, Vlan1
+O    10.30.0.0/16 [110/3] via 192.168.10.2, Vlan1, 02:10:44

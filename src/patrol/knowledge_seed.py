@@ -37,7 +37,7 @@ Temperature value: 38""",
             "display lldp neighbor brief": """Local Intf   Neighbor Dev             Neighbor Intf
 GE0/0/1      core-sw                   GE1/0/24""",
             "display ospf peer": """ Neighbor ID     Pri   State           Dead Time   Interface
- 192.168.158.35    1     Full/DR         00:00:32    Vlanif10""",
+ 10.25.158.35    1     Full/DR         00:00:32    Vlanif10""",
             "display current-configuration": """#
  sysname access-sw
  telnet server enable
@@ -80,65 +80,61 @@ return""",
         },
     },
     {
-        "vendor": "cisco", "device_type": "ios_switch",
-        "name": "样例-Cisco2960S", "model": "WS-C2960S-48TS-L",
-        "software_version": "15.2(2)E9", "host_hint": "接入交换机",
+        "vendor": "zte", "device_type": "zxr10_switch",
+        "name": "样例-中兴5250", "model": "5250-28PS-E",
+        "software_version": "V3.1.0", "host_hint": "接入交换机",
         "responses": {
-            "show version": """Cisco IOS Software, C2960S Software (C2960S-UNIVERSALK9-M), Version 15.2(2)E9
-cisco WS-C2960S-48TS-L (PowerPC405) processor
-WS-C2960S-48TS-L uptime is 30 weeks, 2 days, 3 hours, 55 minutes""",
-            "show processes cpu": """CPU utilization for five seconds: 8%/0%; one minute: 5%; five minutes: 4%""",
-            "show memory statistics": """            Head    Total(b)     Used(b)     Free(b)
-Processor  0x02AA5B90   62197760     25127720    37070040""",
-            "show ip interface brief": """Interface              IP-Address      OK? Method Status                Protocol
-Vlan1                  192.168.10.1    YES NVRAM  up                    up
-GigabitEthernet0/1     unassigned      YES NVRAM  up                    up
-GigabitEthernet0/2     unassigned      YES unset   down                 down""",
-            "show env all": """Fan Status:
-  Fan 1
-    Status:  OK
-POWER SUPPLIES:
-  Power Supply 1
-    Status:  OK""",
-            "show lldp neighbors": """Device ID           Local Intf     Hold-time  Capability  Port ID
-core-sw             Gi0/1          120        B,R         Gi1/0/24""",
-            "show running-config": """hostname sw-access
-aaa new-model
-spanning-tree mode rapid-pvst
+            "show version": """ZTE ZXR10 5250 Series Software, Version V3.1.0
+Copyright (c) 2001-2026 ZTE Corporation.
+ZXR10 5250-28PS-E uptime is 12 weeks, 3 days, 4 hours, 56 minutes""",
+            "show cpu": """CPU utilization in 5 seconds: 8.3%
+CPU utilization in 1 minute : 7.9%
+CPU utilization in 5 minutes: 7.5%""",
+            "show memory": """System Total Memory(bytes): 1073741824
+Total Used Memory(bytes): 279134208
+Memory Used Rate: 26%""",
+            "show ip interface brief": """Interface         IP-Address      Mask          Admin  Phy   Prot
+gei-1/1/1         10.1.1.1        255.255.255.0 up     up    up
+vlan10            192.168.10.1    255.255.255.0 up     up    up
+gei-1/1/24        unassigned      --            up     down  down""",
+            "show logging": """Jul 12 2026 10:23:45 sw-acc %%01SYS/2/REBOOT(l): System rebooted by user
+Jul 12 2026 08:00:11 sw-acc %%01SEC/5/LOGIN(l): SSH login succeeded""",
+            "show lldp neighbors": """gei-1/1/1          core-sw            gei-1/1/24
+gei-1/1/2          ap-floor3          eth0""",
+            "show running-config": """hostname sw-acc
+ssh-server enable
+snmp-server community zte-public RO
+spanning-tree enable
 line vty 0 4
- transport input ssh
-snmp-server community public RO""",
+ login local
+ protocol input ssh""",
         },
     },
     {
-        "vendor": "juniper", "device_type": "junos",
-        "name": "样例-JuniperEX4300", "model": "ex4300-48t",
-        "software_version": "21.4R3-S5.2", "host_hint": "接入交换机",
+        "vendor": "maipu", "device_type": "mypower_switch",
+        "name": "样例-迈普S3100", "model": "S3100V2-24GT4XS",
+        "software_version": "2.10.13", "host_hint": "接入交换机",
         "responses": {
-            "show version": """Hostname: ex-access
-Model: ex4300-48t
-Junos: 21.4R3-S5.2""",
-            "show chassis routing-engine": """Routing Engine status:
-    CPU utilization:
-      User        1 percent
-      Idle       97 percent
-    Memory utilization           22 percent""",
-            "show interfaces terse": """Interface               Admin Link Proto
-ge-0/0/0                up    up
-ge-0/0/1                up    down
-ge-0/0/2                down  down""",
-            "show chassis environment": """Class Item                   Status
-Power Power Supply 0         OK
-Fan  Fan Tray 0             OK""",
-            "show system alarms": """No alarms currently active""",
-            "show configuration system services": """ssh {
-    root-login deny;
-}
-web-management {
-    https {
-        system-generated-certificate;
-    }
-}""",
+            "show version": """MyPower Operating System Software
+MyPower S3100V2 Software Version 2.10.13
+MyPower S3100V2-24GT4XS uptime is 15 weeks, 1 day, 2 hours""",
+            "show processes cpu": """CPU utilization in five seconds: 12%/2%; one minute: 9%; five minutes: 7%""",
+            "show memory statistics": """                Head      Total(b)     Used(b)     Free(b)
+Processor  0x1A2B3C  262144000    89128960    173015040""",
+            "show ip interface brief": """Interface              IP-Address      OK? Method Status                Protocol
+Vlan1                  192.168.10.1    YES NVRAM  up                    up
+GigabitEthernet0/2     unassigned      YES unset   down                 down""",
+            "show logging": """Jul 08 10:23:45.123: %LINK-3-UPDOWN: Interface GigabitEthernet0/2, changed state to down
+Jul 08 09:00:01.220: %SYS-6-BOOTTIME: System restarted""",
+            "show lldp neighbors": """Gi0/1              core-sw            Gi1/0/24
+Gi0/2              ap-floor3          eth0""",
+            "show running-config": """hostname mp-acc
+ssh-server enable
+snmp-server community public RO
+spanning-tree mode rstp
+line vty 0 4
+ login local
+ transport input ssh""",
         },
     },
     {
