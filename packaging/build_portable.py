@@ -142,6 +142,10 @@ def make_zip() -> Path:
 
 
 def main() -> None:
+    # CI 英文 Windows 控制台为 cp1252,中文提示 print 会 UnicodeEncodeError,统一切 UTF-8
+    for stream in (sys.stdout, sys.stderr):
+        if stream and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     if not (ROOT / "pyproject.toml").exists():
         sys.exit("请在巡检助手项目根目录下运行本脚本。")
     make_icon()
