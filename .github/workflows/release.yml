@@ -29,6 +29,8 @@ jobs:
   windows-package:
     needs: test
     runs-on: windows-latest
+    env:
+      PYTHONUTF8: "1"  # CI 英文 Windows 控制台默认 cp1252,中文输出会 UnicodeEncodeError
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
