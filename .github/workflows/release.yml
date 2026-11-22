@@ -6,6 +6,11 @@ on:
   push:
     tags: ["v*"]
 
+# 上传 Release 附件需要 contents 写权限(默认 GITHUB_TOKEN 只读会报
+# "Resource not accessible by integration")
+permissions:
+  contents: write
+
 jobs:
   test:
     strategy:
