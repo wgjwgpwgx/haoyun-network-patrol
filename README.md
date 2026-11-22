@@ -9,7 +9,7 @@
 
 | 版本 | 去哪拿 | 适合谁 |
 |------|--------|--------|
-| **发布版(正式交付)** | [Releases](../../releases) 下载绿色包 zip,解压双击「启动巡检助手.exe」即用 | 网络工程师 / 现场交付,无需任何开发环境 |
+| **发布版(正式交付)** | [Releases](../../releases)(GitHub)或 [Gitee 发行版](https://gitee.com/nmghywx/xjzs/releases) 下载绿色包 zip,解压双击「启动巡检助手.exe」即用 | 网络工程师 / 现场交付,无需任何开发环境 |
 | **源码版** | Clone 本仓库,`pip install -e .` 后运行 | 开发者 / 二次开发(MIT 协议允许) |
 
 > 版本号规则:Release 的 `vX.Y.Z` 即发布版本号,与 `pyproject.toml` 的 version、[CHANGELOG](CHANGELOG.md) 一一对应;main 分支为开发主线,可能包含尚未发布的改动。
@@ -18,7 +18,7 @@
 
 | 平台 | 推荐形态 | 说明 |
 |------|----------|------|
-| Windows 10/11 | **绿色包 exe**(见 [Releases](../../releases),双击即用) | 主力交付形态,桌面小工具 + Web 全功能 |
+| Windows 10/11 | **绿色包 exe**(见 [Releases](../../releases) / [Gitee 发行版](https://gitee.com/nmghywx/xjzs/releases),双击即用) | 主力交付形态,桌面小工具 + Web 全功能 |
 | Linux / macOS | `pip install -e .` 后运行(见下方快速开始) | Web 模式全功能;桌面小工具可跑(需系统 Tk) |
 | 任意终端浏览器 | `--web` 模式远程访问 | 天然跨平台 |
 
