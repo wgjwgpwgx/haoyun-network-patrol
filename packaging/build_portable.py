@@ -128,7 +128,12 @@ def assemble() -> None:
 
 def make_zip() -> Path:
     print("[5/5] 生成分发压缩包……")
-    zip_path = DIST_ROOT / f"{APP_NAME}-v{VERSION}-绿色版.zip"
+    # GitHub Release 附件名会剥除中文字符(CI 环境用 ASCII 名保证下载名可读;
+    # 本地交付仍用中文名,双击体验不变)
+    import os
+    zip_name = (f"haoyun-patrol-v{VERSION}-win64-portable.zip"
+                if os.environ.get("CI") else f"{APP_NAME}-v{VERSION}-绿色版.zip")
+    zip_path = DIST_ROOT / zip_name
     if zip_path.exists():
         zip_path.unlink()
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
