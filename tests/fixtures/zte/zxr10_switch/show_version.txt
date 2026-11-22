@@ -1,0 +1,5 @@
+ZTE ZXR10 5250 Series Software, Version V3.1.0
+Copyright (c) 2001-2026 ZTE Corporation.
+Compiled Mar 12 2026, 09:45:30
+ZXR10 5250-28PS-E uptime is 12 weeks, 3 days, 4 hours, 56 minutes
+Serial Number : ZTE05G10249

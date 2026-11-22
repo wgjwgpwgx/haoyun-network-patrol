@@ -1,6 +1,6 @@
 """子网扫描发现(P1 到场准备)
 
-输入网段(如 192.168.0.0/24)→ ICMP ping + SNMP sysDescr 并发扫描
+输入网段(如 10.25.0.0/24)→ ICMP ping + SNMP sysDescr 并发扫描
 → 识别存活设备及厂商 → 一键建档。
 
 对标:Auvik 自动发现 / Cisco DNA Center Discovery
@@ -25,9 +25,9 @@ _VENDOR_SIGNATURES = [
     (r"SecPath", "h3c", "secpath_firewall"),
     (r"HUAWEI|Huawei.*S\d{4}|VRP.*software", "huawei", "vrp_switch"),
     (r"Comware|H3C|Hangzhou.*H3C", "h3c", "comware_switch"),
-    (r"Cisco IOS", "cisco", "ios_switch"),
-    (r"Junos:|JUNOS", "juniper", "junos"),
     (r"Ruijie|RGOS", "ruijie", "rgos_switch"),
+    (r"ZXR10|ZTE\s+ZXR10", "zte", "zxr10_switch"),
+    (r"MyPower|Maipu", "maipu", "mypower_switch"),
     (r"Sangfor|NGAF", "sangfor", "ngaf_firewall"),
     (r"DPtech|DPTECH", "dptech", "fw_firewall"),
 ]
@@ -133,7 +133,7 @@ def _scan_one(host: str, community: str = "public") -> dict[str, Any]:
 
 def scan_subnet(cidr: str, community: str = "public",
                 max_workers: int = 20) -> list[dict[str, Any]]:
-    """扫描一个网段(如 192.168.0.0/24),返回存活设备列表。
+    """扫描一个网段(如 10.25.0.0/24),返回存活设备列表。
 
     并发 ping+SNMP,按可达排序。返回 [{host, alive, vendor,
     device_type, sysdescr, sysname}]。
@@ -141,7 +141,7 @@ def scan_subnet(cidr: str, community: str = "public",
     try:
         net = ipaddress.ip_network(cidr, strict=False)
     except ValueError:
-        raise ValueError(f"无效网段: {cidr}(示例: 192.168.0.0/24)")
+        raise ValueError(f"无效网段: {cidr}(示例: 10.25.0.0/24)")
 
     hosts = [str(ip) for ip in net.hosts()]
     if len(hosts) > 512:

@@ -26,8 +26,8 @@ _VENDORS = {
     "ruijie": "ruijie", "锐捷": "ruijie",
     "sangfor": "sangfor", "深信服": "sangfor",
     "dptech": "dptech", "迪普": "dptech",
-    "juniper": "juniper", "瞻博": "juniper",
-    "cisco": "cisco", "思科": "cisco",
+    "zte": "zte", "中兴": "zte",
+    "maipu": "maipu", "迈普": "maipu",
 }
 
 

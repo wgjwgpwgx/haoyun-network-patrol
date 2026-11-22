@@ -1,0 +1,20 @@
+hostname sw-acc
+!
+ssh-server enable
+!
+snmp-server community zte-public RO
+!
+spanning-tree enable
+!
+interface gei-1/1/1
+ description TO-CORE
+ ip address 10.1.1.1 255.255.255.0
+!
+line console 0
+ login local
+!
+line vty 0 4
+ login local
+ protocol input ssh
+!
+end

@@ -14,8 +14,8 @@ class TestIdentifyVendor:
     @pytest.mark.parametrize("sysdescr,vendor,device_type", [
         ("Huawei Versatile Routing Platform Software VRP S5735", "huawei", "vrp_switch"),
         ("H3C Comware Platform Software S7506E", "h3c", "s7506e"),
-        ("Cisco IOS Software C2960S", "cisco", "ios_switch"),
-        ("Junos: 21.4R3 ex4300", "juniper", "junos"),
+        ("ZTE ZXR10 5250 Series Software", "zte", "zxr10_switch"),
+        ("MyPower S3100V2 Software Version 2.10.13", "maipu", "mypower_switch"),
         ("Ruijie RGOS 10.4", "ruijie", "rgos_switch"),
         ("Sangfor NGAF v8.0", "sangfor", "ngaf_firewall"),
         ("Huawei USG6000V VRP", "huawei", "usg_firewall"),

@@ -1,0 +1,7 @@
+Codes: C - connected, S - static, R - RIP, O - OSPF, B - BGP
+Gateway of last resort is 10.1.1.254 to network 0.0.0.0
+
+S*   0.0.0.0/0 [1/0] via 10.1.1.254, gei-1/1/1
+C    10.1.1.0/24 is directly connected, gei-1/1/1
+C    192.168.10.0/24 is directly connected, vlan10
+O    172.16.30.0/24 [110/2] via 192.168.10.2, vlan10, 00:12:03

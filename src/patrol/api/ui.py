@@ -49,8 +49,8 @@ _VENDOR_LABELS = {
     "ruijie": "锐捷",
     "sangfor": "深信服",
     "dptech": "迪普",
-    "juniper": "Juniper (瞻博)",
-    "cisco": "Cisco (思科)",
+    "zte": "中兴",
+    "maipu": "迈普",
 }
 _DEVICE_TYPE_LABELS = {
     "comware_switch": "Comware 交换机",
@@ -61,8 +61,8 @@ _DEVICE_TYPE_LABELS = {
     "rgos_switch": "RGOS 交换机",
     "ngaf_firewall": "NGAF 下一代防火墙",
     "fw_firewall": "FW 防火墙",
-    "junos": "Junos 交换机/路由器",
-    "ios_switch": "IOS 交换机/路由器",
+    "zxr10_switch": "ZXR10 交换机",
+    "mypower_switch": "MyPower 交换机",
 }
 
 

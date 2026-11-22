@@ -20,13 +20,14 @@
 |------|----------|------|
 | Windows 10/11 | **绿色包 exe**(见 [Releases](../../releases) / [Gitee 发行版](https://gitee.com/nmghywx/xjzs/releases),双击即用) | 主力交付形态,桌面小工具 + Web 全功能 |
 | Linux / macOS | `pip install -e .` 后运行(见下方快速开始) | Web 模式全功能;桌面小工具可跑(需系统 Tk) |
+| 信创 Linux(银河麒麟/统信 UOS) | **绿色包 tar.gz**(x86_64 / aarch64 飞腾·鲲鹏,见 [Releases](../../releases) / [Gitee 发行版](https://gitee.com/nmghywx/xjzs/releases)) | 解压即用,CLI 巡检 + Web 模式(无图形库自动转 Web) |
 | 任意终端浏览器 | `--web` 模式远程访问 | 天然跨平台 |
 
 > PDF 导出:Windows 自动使用 Microsoft Word;Linux/macOS 自动改用 LibreOffice(`sudo apt install libreoffice-writer fonts-wqy-microhei` 或 `brew install --cask libreoffice`)。
 
 ## 功能特性
 
-- **7 厂商 10 种设备类型**:H3C×3(comware 交换机 / S7506E / SecPath 防火墙)、华为×2(VRP 交换机 / USG 防火墙)、锐捷、深信服、迪普、Juniper Junos、Cisco IOS
+- **7 家全国产厂商 10 种设备类型**:H3C×3(comware 交换机 / S7506E / SecPath 防火墙)、华为×2(VRP 交换机 / USG 防火墙)、锐捷、深信服、迪普、中兴 ZXR10、迈普 MyPower
 - **三种采集通道**:SSH(netmiko,支持 super 密码自动提权)/ Web 控制台 / API
 - **YAML 规则引擎**:检查项判定 PASS / FAIL / UNKNOWN,规则文件可自行增改,无法识别的回显如实标记 UNKNOWN 绝不误报"正常"
 - **合并巡检报告**:一次任务多台设备 → 一份整体报告(汇总 / 风险项 / 逐台检查项 / 原始回显平铺展示,敏感信息自动脱敏)
@@ -71,10 +72,10 @@ python -m patrol -c config/devices.yaml   # CLI 批量巡检
 | 锐捷 | rgos_switch | SSH |
 | 深信服 | ngaf_firewall | Web / API |
 | 迪普 | dptech_firewall | API |
-| Juniper | junos | SSH |
-| Cisco | ios_switch | SSH |
+| 中兴 | zxr10_switch | SSH |
+| 迈普 | mypower_switch | SSH |
 
-> 新增厂商驱动按标准回显格式编写,Juniper / Cisco / USG / SecPath 解析器建议先在自己的设备上试跑一次;遇到 UNKNOWN 请保留报告回传适配(报告内含完整原始回显)。
+> 新增厂商驱动按标准回显格式编写,中兴 / 迈普 / USG / SecPath 解析器建议先在自己的设备上试跑一次;遇到 UNKNOWN 请保留报告回传适配(报告内含完整原始回显)。
 
 ## 配置说明
 

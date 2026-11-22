@@ -76,10 +76,10 @@ class TestPageRendering:
         assert client.get("/ui").status_code == 200
 
     def test_device_list_renders_all_vendors(self, client):
-        """厂商筛选下拉框应包含全部 7 家(修复前只有 H3C)。"""
+        """厂商筛选下拉框应包含全部 7 家全国产阵容。"""
         resp = client.get("/ui/devices")
         assert resp.status_code == 200
-        for label in ("H3C", "华为", "锐捷", "深信服", "迪普", "Juniper", "Cisco"):
+        for label in ("H3C", "华为", "锐捷", "深信服", "迪普", "中兴", "迈普"):
             assert label in resp.text, f"厂商筛选缺少: {label}"
 
     def test_new_form_options_and_no_password_prefill(self, client):

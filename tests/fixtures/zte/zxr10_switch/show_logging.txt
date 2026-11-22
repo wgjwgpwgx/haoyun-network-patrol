@@ -1,0 +1,4 @@
+Jul 12 2026 10:23:45 sw-acc %%01IFNET/4/LINK_STATE(l): Interface gei-1/1/24 link state is DOWN
+Jul 12 2026 10:23:45 sw-acc %%01IFNET/6/IF_SPEED(l): gei-1/1/1 negotiated speed 1000M
+Jul 12 2026 09:15:02 sw-acc %%01SYS/2/REBOOT(l): System rebooted by user
+Jul 12 2026 08:00:11 sw-acc %%01SEC/5/LOGIN(l): SSH login succeeded from 192.168.10.100

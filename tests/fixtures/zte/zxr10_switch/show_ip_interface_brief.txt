@@ -1,0 +1,5 @@
+Interface         IP-Address      Mask          Admin  Phy   Prot
+gei-1/1/1         10.1.1.1        255.255.255.0 up     up    up
+vlan10            192.168.10.1    255.255.255.0 up     up    up
+vlan20            172.16.20.1     255.255.255.0 up     up    up
+gei-1/1/24        unassigned      --            up     down  down

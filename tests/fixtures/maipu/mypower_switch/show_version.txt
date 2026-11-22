@@ -1,0 +1,5 @@
+MyPower Operating System Software
+MyPower S3100V2 Software Version 2.10.13
+Compiled on Jul 08 2024, 15:32:10
+MyPower S3100V2-24GT4XS uptime is 15 weeks, 1 day, 2 hours
+Serial Number : MP1102260B7
