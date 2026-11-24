@@ -316,13 +316,34 @@ def report_summary(data: dict) -> dict:
                     "severity": item.get("details", {}).get("severity", "warning"),
                     "suggestion": item.get("details", {}).get("suggestion", ""),
                 })
+    error_devices = [{"device_name": dev.get("name", ""), "error": dev["error"]}
+                     for dev in data.get("devices", []) if dev.get("error")]
     return {
         "total_pass": total_pass,
         "total_fail": total_fail,
         "total_unknown": total_unknown,
         "fail_items": fail_items,
+        "error_devices": error_devices,
         "ai": data.get("ai_analysis") or {},
     }
+
+
+def attention_items(data: dict) -> list[dict]:
+    """首页/概览"需要关注的问题":未能采集的设备排在最前,其后是异常检查项。
+
+    设备连不上比任何单项异常都紧急,而它不会产生 FAIL 项——只看 FAIL 项时,
+    一份"所有设备都没连上"的报告会被显示成"未发现异常项"。
+    每项字段与 fail_items 一致(device_name/category/message/severity)。
+    """
+    summary = report_summary(data)
+    unreachable = [{
+        "device_name": d["device_name"],
+        "category": "设备采集",
+        "message": f"设备未能采集:{d['error']}",
+        "severity": "critical",
+        "suggestion": "检查管理地址与端口是否可达、账号密码是否正确",
+    } for d in summary["error_devices"]]
+    return unreachable + summary["fail_items"]
 
 
 def delete_reports(filenames: list[str], output_dir: Path = OUTPUT_DIR) -> int:

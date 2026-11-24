@@ -144,14 +144,14 @@ class DashboardPanel(BasePanel):
             ))
         colorize_rows(self.tree_tasks)
 
-        # 最近一份报告的风险项
+        # 最近一份报告需要关注的问题:未能采集的设备排最前,其后是异常检查项
+        # (设备连不上不产生 FAIL 项,只看 FAIL 项会把它显示成"0 个风险")
         fails: list[dict] = []
         reports = service.list_reports()
         if reports:
             try:
-                summary = service.report_summary(
+                fails = service.attention_items(
                     service.load_report_data(reports[0]["name"]))
-                fails = summary["fail_items"]
                 self.stat_labels["fails"].configure(text=str(len(fails)))
             except (ValueError, FileNotFoundError):
                 self.stat_labels["fails"].configure(text="—")

@@ -115,6 +115,26 @@ def _laid_out_texts(widget, stop) -> list[str]:
     return texts
 
 
+class TestDashboardListsUnreachableDevices:
+    def test_latest_report_with_unreachable_device_shows_it(self, app, tmp_path):
+        """设备连不上不产生异常检查项:概览页不能因此显示成 0 个风险。"""
+        import json
+        stem = tmp_path / "output" / "patrol_latest"
+        stem.with_suffix(".json").write_text(json.dumps({
+            "title": "t", "devices": [{
+                "name": "断-01", "host": "192.0.2.2", "error": "SSH 连接超时",
+                "pass_count": 0, "fail_count": 0, "unknown_count": 0,
+                "check_items": []}]}, ensure_ascii=False), encoding="utf-8")
+        stem.with_suffix(".html").write_text("<html></html>", encoding="utf-8")
+
+        app.show("dashboard")
+        panel = app.panels["dashboard"]
+        rows = [panel.tree_fails.item(i, "values") for i in panel.tree_fails.get_children()]
+
+        assert rows and rows[0][0] == "断-01" and "未能采集" in rows[0][3]
+        assert panel.stat_labels["fails"].cget("text") == "1"
+
+
 class TestSettingsPanel:
     def test_schedule_card_is_laid_out(self, app):
         """定时巡检卡片此前创建后忘了 pack:功能在,用户永远看不到。"""

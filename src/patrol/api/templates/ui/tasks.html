@@ -106,8 +106,8 @@
                     <span class="badge bg-secondary">{{ t.status }}</span>
                     {% endif %}
                 </td>
-                <td>{{ t.created_at[:16] }}</td>
-                <td>{{ t.finished_at[:16] if t.finished_at else '-' }}</td>
+                <td>{{ t.created_at[:16]|replace('T', ' ') }}</td>
+                <td>{{ t.finished_at[:16]|replace('T', ' ') if t.finished_at else '-' }}</td>
                 <td>
                     {% if t.report_file %}
                     <a href="/ui/reports/{{ t.report_file }}" class="btn btn-sm btn-outline-success btn-action" target="_blank"><i class="bi bi-eye"></i> 查看</a>

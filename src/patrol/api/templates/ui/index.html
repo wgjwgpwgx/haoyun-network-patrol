@@ -29,7 +29,7 @@
     <div class="col-6 col-md-3">
         <div class="card stat-card">
             <div class="num text-danger">{{ stats.fail_total }}</div>
-            <div class="label">FAIL 项</div>
+            <div class="label">FAIL 项{% if stats.error_total is integer and stats.error_total %} · {{ stats.error_total }} 台设备未能采集{% endif %}</div>
         </div>
     </div>
 </div>
@@ -40,6 +40,7 @@
         <div class="card">
             <div class="card-header bg-white"><strong><i class="bi bi-exclamation-triangle text-danger"></i> 需要关注的问题</strong></div>
             <div class="card-body p-0">
+                {# fail_items = 未能采集的设备(排最前) + 异常检查项 #}
                 {% if fail_items %}
                 <table class="table table-hover mb-0">
                     <thead><tr><th>设备</th><th>检查项</th><th>级别</th><th>问题</th></tr></thead>
@@ -56,6 +57,10 @@
                 </table>
                 {% elif stats.fail_total == '—' %}
                 <div class="text-center text-muted py-4">还没有巡检报告。发起一次巡检后,这里会列出需要关注的问题</div>
+                {% elif stats.pass_total == 0 and stats.fail_total == 0 and stats.unknown_total == 0 %}
+                <div class="text-center text-muted py-4">最近一次巡检没有产生任何检查结果</div>
+                {% elif stats.pass_total == 0 and stats.fail_total == 0 %}
+                <div class="text-center text-muted py-4">最近一次巡检的 {{ stats.unknown_total }} 项检查都无法判定,不能据此认为网络正常</div>
                 {% else %}
                 <div class="text-center text-muted py-4">最近一次巡检未发现异常项</div>
                 {% endif %}
@@ -73,7 +78,7 @@
                     {% for t in recent_tasks %}
                     <tr>
                         <td>{{ t.device_name }}</td>
-                        <td>{{ t.created_at[:16] }}</td>
+                        <td>{{ t.created_at[:16]|replace('T', ' ') }}</td>
                         <td>
                             {% if t.status == 'completed' %}<span class="badge bg-success">完成</span>
                             {% elif t.status == 'running' %}<span class="badge bg-primary">运行中</span>

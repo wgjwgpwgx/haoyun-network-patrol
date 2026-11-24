@@ -114,16 +114,20 @@ def dashboard(request: Request):
         "device_count": len(devices),
         "customer_count": len(_customer_store.list()),
         "pass_total": "—", "fail_total": "—", "unknown_total": "—",
+        "error_total": "—",
     }
     fail_items: list[dict] = []
     latest = _svc.list_reports()
     if latest:
         try:
-            summary = _svc.report_summary(_svc.load_report_data(latest[0]["name"]))
+            data = _svc.load_report_data(latest[0]["name"])
+            summary = _svc.report_summary(data)
             stats.update(pass_total=summary["total_pass"],
                          fail_total=summary["total_fail"],
-                         unknown_total=summary["total_unknown"])
-            fail_items = summary["fail_items"]
+                         unknown_total=summary["total_unknown"],
+                         error_total=len(summary["error_devices"]))
+            # 未能采集的设备排在异常检查项之前:设备连不上不能显示成"未发现异常项"
+            fail_items = _svc.attention_items(data)
         except (ValueError, FileNotFoundError):
             pass
 

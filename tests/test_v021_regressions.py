@@ -86,6 +86,51 @@ class TestWebDashboardShowsRealNumbers:
         assert "还没有巡检报告" in page
         assert "暂无异常" not in page
 
+    @staticmethod
+    def _write_latest(web, tmp_path, devices: list[dict], name="patrol_latest"):
+        stem = tmp_path / "output" / name
+        stem.with_suffix(".json").write_text(json.dumps(
+            {"title": "t", "devices": devices}, ensure_ascii=False), encoding="utf-8")
+        stem.with_suffix(".html").write_text("<html></html>", encoding="utf-8")
+        return web.get("/ui").text
+
+    def test_unreachable_devices_are_listed_not_called_clean(self, web, tmp_path):
+        """设备连不上不产生 FAIL 项:首页不能因此显示成"未发现异常项"。"""
+        page = self._write_latest(web, tmp_path, [{
+            "name": "核心-01", "host": "192.0.2.10", "error": "SSH 连接超时 192.0.2.10",
+            "pass_count": 0, "fail_count": 0, "unknown_count": 0, "check_items": []}])
+
+        assert "核心-01" in page and "设备未能采集" in page and "SSH 连接超时" in page
+        assert "1 台设备未能采集" in page
+        assert "未发现异常项" not in page
+
+    def test_unreachable_devices_come_before_failed_checks(self, web, tmp_path):
+        page = self._write_latest(web, tmp_path, [
+            {"name": "坏-01", "host": "192.0.2.1", "error": None, "pass_count": 0,
+             "fail_count": 1, "unknown_count": 0,
+             "check_items": [{"name": "fan_status", "category": "硬件", "status": "FAIL",
+                              "message": "风扇故障", "details": {"severity": "critical"}}]},
+            {"name": "断-01", "host": "192.0.2.2", "error": "SSH 认证失败",
+             "pass_count": 0, "fail_count": 0, "unknown_count": 0, "check_items": []},
+        ])
+        assert page.index("断-01") < page.index("坏-01")  # 连不上的设备排在最前
+        assert "风扇故障" in page and "1 台设备未能采集" in page
+
+    def test_all_unknown_report_is_not_called_clean(self, web, tmp_path):
+        page = self._write_latest(web, tmp_path, [{
+            "name": "盲-01", "host": "192.0.2.3", "error": None, "pass_count": 0,
+            "fail_count": 0, "unknown_count": 5, "check_items": []}])
+        assert "5 项检查都无法判定" in page
+        assert "未发现异常项" not in page
+
+    def test_clean_report_is_still_called_clean(self, web, tmp_path):
+        page = self._write_latest(web, tmp_path, [{
+            "name": "好-01", "host": "192.0.2.4", "error": None, "pass_count": 4,
+            "fail_count": 0, "unknown_count": 0,
+            "check_items": [{"name": "cpu_usage", "category": "CPU", "status": "PASS",
+                             "message": "ok", "details": {}}]}])
+        assert "最近一次巡检未发现异常项" in page
+
 
 class TestPrecheck:
     def test_udp_and_serial_methods_are_not_probed_over_tcp(self, web):
