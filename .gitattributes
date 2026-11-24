@@ -1,0 +1,2 @@
+# Shell 脚本在任何平台检出都必须是 LF(CRLF 会让 Linux 上的 bash 直接报错)
+*.sh text eol=lf

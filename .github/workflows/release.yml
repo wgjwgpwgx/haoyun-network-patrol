@@ -1,15 +1,15 @@
 name: Release
 
-# 发版流程:推送 v* 标签(或网页 Draft release 建标签)自动触发
-# 三平台跑测试 → Windows 构建绿色包 → 自动挂到 GitHub Release
+# 发版流程:推送 v* 标签触发
+#   三平台测试 → 构建安装包 → 冻结冒烟(Windows 桌面窗口 / Linux 在同代 glibc
+#   的干净容器里拉起 Web 服务) → 全部通过后才上传到 GitHub Release。
+# 冒烟不过,新版本就不会对外可见。
 on:
   push:
     tags: ["v*"]
 
-# 上传 Release 附件需要 contents 写权限(默认 GITHUB_TOKEN 只读会报
-# "Resource not accessible by integration")
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
@@ -43,13 +43,16 @@ jobs:
           python-version: "3.12"
       - run: pip install -e . pyinstaller
       - run: python packaging/build_portable.py
-      - uses: softprops/action-gh-release@v2
+      - name: 冻结冒烟(桌面窗口构建、六面板遍历、服务层可达)
+        run: python scripts/smoke_desktop_frozen.py
+      - uses: actions/upload-artifact@v4
         with:
-          files: dist/*.zip
+          name: windows-portable
+          path: dist/*.zip
+          if-no-files-found: error
 
   # 信创 Linux 绿色包:manylinux_2_28 容器(glibc 2.28 基线,与银河麒麟 V10 /
   # 统信 UOS 同代;亦满足 CI node24 运行时要求)构建,双架构 x86_64 + aarch64(飞腾/鲲鹏)。
-  # manylinux 容器自带 /opt/python 多版本解释器,无需 setup-python。
   linux-package:
     needs: test
     strategy:
@@ -81,10 +84,51 @@ jobs:
         run: $PY -m pip install -e . pyinstaller
       - name: 构建 Linux 绿色包
         run: $PY packaging/build_portable_linux.py --arch ${{ matrix.arch }}
-      - name: 容器内冒烟(同 glibc 基线环境实跑二进制)
-        run: |
-          tar xzf dist/haoyun-patrol-v*-linux-${{ matrix.arch }}.tar.gz -C /tmp
-          /tmp/haoyun-patrol/patrol-assistant --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: |
+            dist/*.tar.gz
+            packaging/smoke_linux_portable.sh
+          if-no-files-found: error
+
+  # 冒烟不在构建容器里做:构建容器自带整套运行库,在那里能跑不代表用户机器能跑。
+  # rockylinux:8 的 glibc 为 2.28,与目标系统同代,且不含任何构建环境。
+  linux-smoke:
+    needs: linux-package
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.os }}
+    container: rockylinux:8
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: /tmp/pkg
+      - name: 在同代 glibc 的干净环境里实跑
+        run: bash /tmp/pkg/smoke_linux_portable.sh /tmp/pkg/haoyun-patrol-v*-linux-${{ matrix.arch }}.tar.gz
+
+  publish:
+    needs: [windows-package, linux-smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      # 上传 Release 附件需要写权限(默认 GITHUB_TOKEN 只读);
+      # 只给这一个 job,测试与构建 job 均为只读
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: ls -la dist && rm -f dist/*.sh
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.tar.gz
+          files: |
+            dist/*.zip
+            dist/*.tar.gz
