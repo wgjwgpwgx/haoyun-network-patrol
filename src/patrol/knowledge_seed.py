@@ -37,7 +37,7 @@ Temperature value: 38""",
             "display lldp neighbor brief": """Local Intf   Neighbor Dev             Neighbor Intf
 GE0/0/1      core-sw                   GE1/0/24""",
             "display ospf peer": """ Neighbor ID     Pri   State           Dead Time   Interface
- 10.25.158.35    1     Full/DR         00:00:32    Vlanif10""",
+ 192.168.158.35    1     Full/DR         00:00:32    Vlanif10""",
             "display current-configuration": """#
  sysname access-sw
  telnet server enable
