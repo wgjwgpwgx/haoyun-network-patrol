@@ -1,7 +1,7 @@
 """冻结冒烟:绿色包桌面小工具窗口构建闭环
 
 流程:以 PATROL_DESKTOP_SMOKE=1 启动 dist 下的 exe
-    → 构建主窗口 + 遍历 6 个面板 + 服务层可达
+    → 构建主窗口 + 遍历 6 个面板 + 服务层可达 + PDF 组件已打包
     → 输出 DESKTOP_SMOKE_OK 并自行退出。
 
     python scripts/smoke_desktop_frozen.py
@@ -44,8 +44,8 @@ def main() -> int:
     ok_marker = "DESKTOP_SMOKE_OK" in out
     check(ok_marker, "桌面窗口构建并输出 DESKTOP_SMOKE_OK", out[-400:])
     check(proc.returncode == 0, "进程正常退出", f"returncode={proc.returncode}")
-    check("SMOKE 2/4" in out, "6 个功能面板全部遍历刷新", out[-400:])
-    check("SMOKE 4/4" in out, "报告/AI/更新服务层可达", out[-400:])
+    check("SMOKE 2/5" in out, "6 个功能面板全部遍历刷新", out[-400:])
+    check("SMOKE 5/5" in out, "报告/AI/更新服务层可达、PDF 组件已打包", out[-400:])
     check("Traceback" not in out, "无未捕获异常", out[-400:])
 
     print(f"\n桌面小工具冻结冒烟 {_passed}/5 通过")

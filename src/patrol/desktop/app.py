@@ -194,6 +194,7 @@ def _smoke() -> int:
         "遍历6个功能面板",
         "厂商/设备类型注册表",
         "报告/AI/更新服务可达",
+        "PDF 组件已打包(win32com 可导入)",
     ]
     try:
         app = Application()
@@ -210,6 +211,11 @@ def _smoke() -> int:
         service.ai_load_raw()
         service.auth_status()
         print(f"SMOKE 4/{len(steps)} {steps[3]}", flush=True)
+        # PDF 导出靠 win32com 调用 Word:打包时漏掉它,成品包里"导出 PDF"直接不可用
+        from patrol.reporter.pdf import check_pdf_capability
+        assert check_pdf_capability()["win32com"], \
+            "PDF 组件(win32com)未打包:这个包将无法导出 PDF"
+        print(f"SMOKE 5/{len(steps)} {steps[4]}", flush=True)
         app.task_manager.shutdown()
         app.root.destroy()
         print("DESKTOP_SMOKE_OK", flush=True)
