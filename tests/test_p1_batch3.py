@@ -15,20 +15,46 @@ def sandbox(tmp_path, monkeypatch):
 
 
 class TestIncremental:
-    def test_core_checks_always_included(self):
-        from patrol.drivers.base import CheckCommand
-        from patrol.incremental import get_incremental_checks
+    ALL = ["device_info", "cpu_usage", "memory_usage", "temperature",
+           "power_status", "fan_status", "lldp_neighbor", "config_cur",
+           "storage", "ospf_neighbor", "arp_count"]
+    CORE = {"device_info", "cpu_usage", "memory_usage", "temperature",
+            "power_status", "fan_status"}
 
-        all_checks = [
-            CheckCommand(name=n, category="x", command=f"cmd_{n}")
-            for n in ["device_info", "cpu_usage", "memory_usage",
-                      "temperature", "power_status", "fan_status",
-                      "lldp_neighbor", "config_cur", "storage",
-                      "ospf_neighbor", "arp_count"]
-        ]
-        # 无历史 → 全量(安全退回)
-        result = get_incremental_checks("huawei", "vrp_switch", all_checks)
-        assert len(result) == len(all_checks)  # 首次退化为全量
+    @staticmethod
+    def _checks():
+        from patrol.drivers.base import CheckCommand
+        return [CheckCommand(name=n, category="x", command=f"cmd_{n}")
+                for n in TestIncremental.ALL]
+
+    @staticmethod
+    def _save_history(statuses: dict[str, str]) -> None:
+        from patrol.storage.history import HistoryStore
+        HistoryStore().save_run(
+            device_name="d", device_host="192.0.2.1", device_type="vrp_switch",
+            vendor="huawei", customer="", project="", run_time="2026-11-01T10:00:00",
+            pass_count=0, fail_count=0, unknown_count=0,
+            check_items=[{"name": n, "status": s} for n, s in statuses.items()])
+
+    @classmethod
+    def _selected(cls) -> set[str]:
+        from patrol.incremental import get_incremental_checks
+        return {c.name for c in get_incremental_checks("huawei", "vrp_switch", cls._checks())}
+
+    def test_no_history_runs_everything(self):
+        assert self._selected() == set(self.ALL)  # 首次巡检没有可参考的历史,跑全量
+
+    def test_core_plus_checks_that_failed_or_were_unknown_last_time(self):
+        """此前增量模式因访问不存在的属性而永远退化为全量,这条路径从未真正执行过。"""
+        self._save_history({"cpu_usage": "PASS", "fan_status": "FAIL",
+                            "ospf_neighbor": "UNKNOWN", "lldp_neighbor": "PASS",
+                            "config_cur": "PASS"})
+        assert self._selected() == self.CORE | {"fan_status", "ospf_neighbor"}
+
+    def test_all_pass_last_time_runs_core_only(self):
+        self._save_history({"cpu_usage": "PASS", "lldp_neighbor": "PASS",
+                            "config_cur": "PASS"})
+        assert self._selected() == self.CORE
 
     def test_quick_mode_field(self):
         from patrol.models import DeviceAsset

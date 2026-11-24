@@ -1,6 +1,7 @@
 """桌面小工具对话框:设备/客户表单、报告预览、文本查看"""
 from __future__ import annotations
 
+import os
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
@@ -552,6 +553,13 @@ class ReportPreviewDialog(_BaseDialog):
         self.txt_raw.bind("<MouseWheel>", lambda e: self.txt_raw.yview_scroll(
             -3 if e.delta > 0 else 3, "units"))
         self.txt_raw.pack(fill="x")
+        # 按钮行只在构建时创建一次(此前写在 _show_item 里,每选中一个检查项就多出一行按钮)
+        btns = tk.Frame(self._body, bg=COLORS["bg"])
+        btns.pack(fill="x", pady=(10, 0))
+        ttk.Button(btns, text="关闭", command=self.destroy).pack(side="right")
+        ttk.Button(btns, text="导出 Word", command=self._export_word).pack(
+            side="right", padx=(0, 8))
+        ttk.Button(btns, text="打开 HTML 文件", command=self._open_file).pack(side="left")
         self.tree_all.bind("<<TreeviewSelect>>", self._on_select_item, add="+")
         if all_items:
             first = self.tree_all.get_children()[0]
@@ -578,13 +586,6 @@ class ReportPreviewDialog(_BaseDialog):
         self.txt_raw.delete("1.0", "end")
         self.txt_raw.insert("1.0", text)
         self.txt_raw.configure(state="disabled")
-
-        btns = tk.Frame(self._body, bg=COLORS["bg"])
-        btns.pack(fill="x", pady=(10, 0))
-        ttk.Button(btns, text="关闭", command=self.destroy).pack(side="right")
-        ttk.Button(btns, text="导出 Word", command=self._export_word).pack(
-            side="right", padx=(0, 8))
-        ttk.Button(btns, text="打开 HTML 文件", command=self._open_file).pack(side="left")
 
     def _open_file(self) -> None:
         try:
@@ -675,9 +676,15 @@ class ImportDialog(_BaseDialog):
 
         from patrol.importer import detect_columns, read_table
 
-        path = filedialog.askopenfilename(
-            parent=self, title="选择台账文件",
-            filetypes=[("台账文件", "*.xlsx *.xlsm *.csv *.docx"), ("所有文件", "*.*")])
+        # Windows 的原生文件对话框可能改变进程工作目录,而全程序按相对路径读写
+        # config/ 与 output/——对话框结束后必须切回,否则报告与配置会写到别处
+        cwd = os.getcwd()
+        try:
+            path = filedialog.askopenfilename(
+                parent=self, title="选择台账文件",
+                filetypes=[("台账文件", "*.xlsx *.xlsm *.csv *.docx"), ("所有文件", "*.*")])
+        finally:
+            os.chdir(cwd)
         if not path:
             return
         try:

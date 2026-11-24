@@ -13,6 +13,7 @@ import logging
 import re
 import subprocess
 import sys
+from itertools import islice
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,8 @@ def _ping(host: str, timeout: int = 2) -> bool:
         timeout_param = "-w" if sys.platform == "win32" else "-W"
         r = subprocess.run(
             ["ping", param, "1", timeout_param, str(timeout * 1000), host],
-            capture_output=True, text=True, timeout=timeout + 2)
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=timeout + 2)  # 不指定编码时,中文系统的 GBK 输出会让解码线程报错
         return r.returncode == 0
     except Exception:  # noqa: BLE001
         return False
@@ -143,9 +145,8 @@ def scan_subnet(cidr: str, community: str = "public",
     except ValueError:
         raise ValueError(f"无效网段: {cidr}(示例: 192.168.0.0/24)")
 
-    hosts = [str(ip) for ip in net.hosts()]
-    if len(hosts) > 512:
-        hosts = hosts[:512]  # 安全限制,避免扫描超大网段
+    # 先截断再展开:/8 这类大网段有上千万个地址,全量展开成列表会耗尽内存
+    hosts = list(islice((str(ip) for ip in net.hosts()), 512))
 
     results: list[dict[str, Any]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:

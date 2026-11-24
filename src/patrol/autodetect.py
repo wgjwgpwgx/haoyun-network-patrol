@@ -80,19 +80,20 @@ def detect_from_version(output: str) -> dict[str, Any] | None:
 def probe_device(host: str, username: str, password: str,
                  login_method: str = "ssh", port: int | None = None,
                  timeout: int = 15) -> dict[str, Any]:
-    """登录设备取 version 回显并识别(SSH 失败自动降级 Telnet)。
+    """登录设备取 version 回显并识别(只走用户选定的登录方式,SSH 失败不自动降级)。
+
+    早期版本 SSH 失败后会自动用同一组账号密码改走 Telnet 重试——密码会在用户
+    不知情的情况下以明文发到网络。要用 Telnet 识别,请显式把登录方式选为 Telnet。
 
     返回 {ok, method, result(识别结果或 None), raw(回显节选), error}。
     """
     from netmiko import ConnectHandler
 
-    attempts: list[tuple[str, str, int]] = []
     if login_method == "telnet":
-        attempts.append(("telnet", "generic_termserver", port or 23))
+        attempts: list[tuple[str, str, int]] = [("telnet", "generic_termserver",
+                                                 port or 23)]
     else:
-        attempts.append(("ssh", "generic", port or 22))
-        if not port:  # 未显式指定端口才尝试降级
-            attempts.append(("telnet", "generic_termserver", 23))
+        attempts = [("ssh", "generic", port or 22)]
 
     last_error = ""
     for method, nm_type, use_port in attempts:
@@ -120,5 +121,7 @@ def probe_device(host: str, username: str, password: str,
                     conn.disconnect()
                 except Exception:  # noqa: BLE001 - 清理容错
                     pass
+    hint = ("(如设备使用 Telnet 管理,请把登录方式选为 Telnet 后重试)"
+            if attempts[0][0] == "ssh" else "")
     return {"ok": False, "method": "", "result": None, "raw": "",
-            "error": last_error}
+            "error": last_error + hint}

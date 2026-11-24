@@ -147,6 +147,8 @@ def main() -> int:
     os.chdir(root)
     seed_config(root)
     (root / "output").mkdir(parents=True, exist_ok=True)
+    # 上次导入台账中途放弃时留下的临时文件(含明文账号密码)随启动清理
+    shutil.rmtree(root / "output" / ".import_tmp", ignore_errors=True)
     if sys.platform != "win32":
         # 系统级凭据加密(DPAPI)仅 Windows 可用:其他平台设备密码明文落库,必须让用户知情
         print("提示:当前平台不支持系统级凭据加密,设备密码将以明文保存在 "

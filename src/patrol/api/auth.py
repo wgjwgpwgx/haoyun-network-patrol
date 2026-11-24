@@ -288,7 +288,10 @@ def _valid_token(token: str | None) -> bool:
     if not token or "." not in token:
         return False
     exp, _, sig = token.partition(".")
-    if not exp.isdigit() or not hmac.compare_digest(
+    # sig 必须是 ASCII:compare_digest 遇到非 ASCII 字符串会抛 TypeError,变成 500
+    if not exp.isdigit() or not (sig.isascii() and sig.isalnum()):
+        return False
+    if not hmac.compare_digest(
         sig, hmac.new(_secret(), exp.encode(), hashlib.sha256).hexdigest()
     ):
         return False

@@ -26,6 +26,7 @@ from patrol.collector.ssh import (
 )
 from patrol.drivers.base import BaseDriver
 from patrol.drivers.registry import get_driver
+from patrol.utils.filename import unique_filename
 
 # 确保全部驱动已注册(drivers/__init__.py 统一导入)
 import patrol.drivers  # noqa: F401
@@ -128,6 +129,10 @@ def run_inspection(
 
     # 连接设备
     if not _connect_collector(collector, asset, report):
+        try:
+            collector.disconnect()  # 连接中途失败也释放已建立的会话(如 Web/API 登录态)
+        except Exception:  # noqa: BLE001
+            logger.debug("断开连接失败", exc_info=True)
         return report
 
     # 采集设备基本信息（用于报告头部展示，不走规则引擎）
@@ -406,7 +411,7 @@ def main() -> None:
         logger.warning("AI 分析失败(巡检结果不受影响): %s", e)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    html_path = output_dir / f"patrol_{timestamp}.html"
+    html_path = output_dir / unique_filename(output_dir, f"patrol_{timestamp}.html")
 
     # 巡检历史入库(P1-3:含指标值,供趋势图;先入库后出报告,趋势含本期)
     try:

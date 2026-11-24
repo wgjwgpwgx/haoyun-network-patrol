@@ -530,7 +530,12 @@ class TasksPanel(BasePanel):
         self._poll_job = None
         if not self.winfo_exists():  # pragma: no cover
             return
-        self._refresh_tasks()
+        try:
+            self._refresh_tasks()
+        except tk.TclError:  # 窗口正在销毁
+            return
+        except Exception as e:  # noqa: BLE001 - 一次刷新失败不能让轮询永久停止
+            self.app.set_status(f"任务列表刷新失败,稍后重试:{e}")
         self._schedule_poll()
 
     def _refresh_tasks(self) -> None:

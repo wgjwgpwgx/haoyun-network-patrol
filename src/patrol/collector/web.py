@@ -119,7 +119,9 @@ class WebCollector(BaseCollector):
             self._pw = pw
             self._browser = pw.chromium.launch(headless=True)
             self._context = self._browser.new_context(
-                ignore_https_errors=True,
+                # 设备上的"跳过证书校验"开关对 Web 登录同样生效(此前恒为跳过,
+                # 表单里关掉这个开关也拦不住,登录密码可被中间人截获)
+                ignore_https_errors=not asset.verify_ssl,
                 viewport={"width": 1920, "height": 1080},
             )
             self._page = self._context.new_page()

@@ -17,3 +17,23 @@ def safe_component(value: str, max_len: int = 50, fallback: str = "device") -> s
     cleaned = re.sub(r"\s+", "_", cleaned)
     cleaned = cleaned.strip("._")
     return cleaned[:max_len] or fallback
+
+
+def unique_filename(directory, filename: str) -> str:
+    """同名报告已存在时追加序号。
+
+    报告文件名里的时间戳只到秒,同一秒内完成的两个任务会互相覆盖。
+    HTML 与伴生的 .json 任一已存在即视为重名。
+    """
+    from pathlib import Path
+
+    # 必须在最后一个点切分:主机地址本身带点(patrol_192.0.2.1_xxx.html),
+    # 按第一个点切会把重名文件拼成 patrol_192_2.0.2.1_xxx.html
+    stem, suffix = Path(filename).stem, Path(filename).suffix
+    candidate, n = filename, 2
+    base = Path(directory) / candidate
+    while base.exists() or base.with_suffix(".json").exists():
+        candidate = f"{stem}_{n}{suffix}"
+        base = Path(directory) / candidate
+        n += 1
+    return candidate

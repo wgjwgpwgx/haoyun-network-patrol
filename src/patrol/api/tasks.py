@@ -134,12 +134,13 @@ class TaskManager:
             reports = [r for _, r in results]
 
             # 生成报告文件:一台用主机名,多台用"N台设备合并"(host 已校验,再消毒一层)
-            from patrol.utils.filename import safe_component
+            from patrol.utils.filename import safe_component, unique_filename
 
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             label = (safe_component(results[0][0].host) if len(reports) == 1
                      else f"{len(reports)}台设备合并")
-            filename = f"patrol_{label}_{ts}.html"
+            filename = unique_filename(
+                self._output_dir, f"patrol_{label}_{ts}.html")
             report_path = self._output_dir / filename
 
             from patrol.reporter.html import HTMLReporter
@@ -210,4 +211,6 @@ class TaskManager:
         return count
 
     def shutdown(self) -> None:
-        self._executor.shutdown(wait=False)
+        # 同时取消尚在排队的任务:否则退出程序后进程会留在后台把它们跑完。
+        # 被取消的任务停在 pending,下次启动由 reconcile_interrupted() 标为已中断。
+        self._executor.shutdown(wait=False, cancel_futures=True)

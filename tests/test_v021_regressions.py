@@ -252,6 +252,51 @@ class TestImportedDevicesCanGetADriver:
         assert devices.get("核心-01")["device_type"] == "s7506e"
 
 
+class TestRoutesTakingNamesFromTheRequest:
+    def test_scan_import_keeps_the_community_used_for_scanning(self, web):
+        """扫描时填的团体字要跟着设备建档:此前被写死成默认值,自定义团体字的设备
+        建档后 SNMP 采集必然失败。"""
+        scanned = [{"host": "192.0.2.50", "sysname": "sw-snmp", "vendor": "huawei",
+                    "device_type": "vrp_switch"}]
+        r = web.post("/ui/devices/scan-import", data={
+            "devices_json": json.dumps(scanned), "customer": "",
+            "username": "", "password": "", "community": "private-community"}).json()
+
+        assert r["imported"] == 1, r
+        dev = app_module._device_store.get("sw-snmp")
+        assert dev["login_method"] == "snmp" and dev["password"] == "private-community"
+
+    def test_scan_import_rejects_illegal_host(self, web):
+        scanned = [{"host": "../../etc/passwd", "sysname": "bad"}]
+        r = web.post("/ui/devices/scan-import", data={
+            "devices_json": json.dumps(scanned), "customer": "",
+            "username": "", "password": "", "community": "public"}).json()
+
+        assert r["imported"] == 0
+        assert "管理地址非法" in r["errors"][0]
+        assert app_module._device_store.get("bad") is None
+
+    def test_compare_cannot_read_files_outside_report_dir(self, web, tmp_path):
+        outside = tmp_path / "outside.json"
+        outside.write_text(json.dumps(_REPORT, ensure_ascii=False), encoding="utf-8")
+
+        page = web.get("/ui/reports/compare",
+                       params={"a": "../outside.json", "b": "other.json"}).text
+
+        assert "风扇故障" not in page and "新增异常" not in page and "已解决" not in page
+
+    def test_audit_limit_is_clamped_at_both_ends(self, web):
+        for i in range(3):
+            assert web.post("/devices", json={
+                "name": f"audit-dev-{i}", "host": "192.0.2.1", "username": "u",
+                "password": "p"}).status_code == 201
+
+        everything = web.get("/audit", params={"limit": -1})
+        assert everything.status_code == 200
+        assert 0 < len(everything.json()) <= 500  # 负数在 SQL 里表示不限制
+        assert len(web.get("/audit", params={"limit": 1}).json()) == 1
+
+
 class TestNonWindowsPaths:
     @pytest.mark.parametrize("platform,opener",
                              [("darwin", "open"), ("linux", "xdg-open")])
