@@ -34,9 +34,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
-      - name: 运行测试(全量)
-        if: matrix.os == 'windows-latest'
+      # 三平台同一条命令:非 Windows 不收集桌面用例由 tests/conftest.py 按平台决定。
+      # 不要在命令行写 --ignore=tests/test_desktop:测试会切换工作目录,而 pytest 8.x
+      # 的 --ignore 在收集阶段按当时的工作目录解析,写了也不生效。
+      - name: 运行测试
         run: python -m pytest -q
-      - name: 运行测试(跳过桌面 Tk 用例)
-        if: matrix.os != 'windows-latest'
-        run: python -m pytest -q --ignore=tests/test_desktop

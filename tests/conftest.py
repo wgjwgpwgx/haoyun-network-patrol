@@ -4,6 +4,7 @@ from __future__ import annotations
 import atexit
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -11,13 +12,26 @@ from pathlib import Path
 # bootstrap() 绑定相对路径 data/patrol.db,历史库与 output/ 同为相对路径——
 # 不隔离则每跑一次测试都会往真实库写审计行、往真实报告目录写文件。
 # config/ 只复制规则与样式等非敏感配置,不复制真实设备/客户/登录凭据。
+#
+# 切目录放在 pytest_configure:早于"收集并导入测试模块"。
+# 注意 pytest 8.x 的 --ignore / --ignore-glob 是在收集阶段按当时的工作目录解析的,
+# 切目录之后再写在命令行上就会失效——排除整个目录要用下面的 collect_ignore_glob。
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _TEST_WORKDIR = Path(tempfile.mkdtemp(prefix="patrol-tests-"))
-shutil.copytree(
-    _REPO_ROOT / "config", _TEST_WORKDIR / "config",
-    ignore=shutil.ignore_patterns("auth.yaml", "devices.yaml", "customers.yaml"))
-os.chdir(_TEST_WORKDIR)
 atexit.register(shutil.rmtree, _TEST_WORKDIR, ignore_errors=True)
+
+
+def pytest_configure(config) -> None:
+    shutil.copytree(
+        _REPO_ROOT / "config", _TEST_WORKDIR / "config",
+        ignore=shutil.ignore_patterns("auth.yaml", "devices.yaml", "customers.yaml"))
+    os.chdir(_TEST_WORKDIR)
+
+
+if sys.platform != "win32":
+    # 桌面用例需要真实窗口(以及 Windows 计划任务等平台能力):非 Windows 的 CI 没有
+    # 显示环境,整个目录不收集。相对本文件所在目录,不受上面切换工作目录的影响。
+    collect_ignore_glob = ["test_desktop/*"]
 
 import pytest  # noqa: E402
 
