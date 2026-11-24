@@ -152,9 +152,14 @@ def make_zip() -> Path:
         zip_path.unlink()
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
         for path in sorted(DIST_DIR.rglob("*")):
-            if path.is_file():
-                arcname = f"{APP_NAME}/{path.relative_to(DIST_DIR).as_posix()}"
-                zf.write(path, arcname)
+            if not path.is_file():
+                continue
+            # 运行期产物不进分发包:设备库里是用户自己的设备与密码,报告目录同理。
+            # 程序在包目录里运行过(或跑过冒烟)再重新打包,它们就会出现在这里。
+            if path.relative_to(DIST_DIR).parts[0] in ("data", "output"):
+                continue
+            arcname = f"{APP_NAME}/{path.relative_to(DIST_DIR).as_posix()}"
+            zf.write(path, arcname)
     size_mb = zip_path.stat().st_size / 1024 / 1024
     print(f"      {zip_path.name} ({size_mb:.0f} MB)")
     return zip_path
