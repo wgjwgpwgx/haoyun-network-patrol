@@ -115,14 +115,18 @@ def run_pyinstaller() -> None:
 def assemble() -> None:
     print("[4/5] 组装绿色包目录……")
     # config/ 直接随包分发,工程师打开文件夹就能改。
-    # 先清掉上次构建残留,保证包内 config 与源码完全一致。
-    # 登录凭据(auth.yaml)与发信配置(smtp.yaml)不随包:它们是本机生成的,
-    # 随包分发等于让所有安装共用同一把会话签名密钥、同一个发信授权码;
-    # 不带它,程序首次运行会为每个安装各自生成。
-    if (DIST_DIR / "config").exists():
-        shutil.rmtree(DIST_DIR / "config")
-    shutil.copytree(ROOT / "config", DIST_DIR / "config",
-                    ignore=shutil.ignore_patterns("auth.yaml", "smtp.yaml"))
+    # 先清掉上次构建残留,保证包内 config 与仓库里的完全一致。
+    # 登录凭据(auth.yaml)与发信配置(smtp.yaml)不从仓库复制:它们是本机运行时生成的,
+    # 随包分发等于让所有安装共用同一把会话签名密钥、同一个发信授权码。
+    # 但 dist 目录往往就是本机日常使用的工作目录,这两个文件在重建时原样放回——
+    # 否则工作目录重建一次,网页登录就回落到公开的默认密码。
+    cfg = DIST_DIR / "config"
+    kept = {name: (cfg / name).read_bytes() for name in ("auth.yaml", "smtp.yaml") if (cfg / name).is_file()}
+    if cfg.exists():
+        shutil.rmtree(cfg)
+    shutil.copytree(ROOT / "config", cfg, ignore=shutil.ignore_patterns("auth.yaml", "smtp.yaml"))
+    for name, content in kept.items():
+        (cfg / name).write_bytes(content)
     (DIST_DIR / "output").mkdir(parents=True, exist_ok=True)
 
     # 使用说明转成带 BOM 的 UTF-8,老版记事本也能正确显示中文
@@ -175,11 +179,13 @@ def make_zip() -> Path:
         for path in sorted(DIST_DIR.rglob("*")):
             if not path.is_file():
                 continue
+            rel = path.relative_to(DIST_DIR)
             # 运行期产物不进分发包:设备库里是用户自己的设备与密码,报告目录同理。
             # 程序在包目录里运行过(或跑过冒烟)再重新打包,它们就会出现在这里。
-            if path.relative_to(DIST_DIR).parts[0] in ("data", "output"):
+            # 登录凭据与发信配置是重建时为工作目录保留下来的,同样不进分发包。
+            if rel.parts[0] in ("data", "output") or rel.as_posix() in ("config/auth.yaml", "config/smtp.yaml"):
                 continue
-            arcname = f"{APP_NAME}/{path.relative_to(DIST_DIR).as_posix()}"
+            arcname = f"{APP_NAME}/{rel.as_posix()}"
             zf.write(path, arcname)
     size_mb = zip_path.stat().st_size / 1024 / 1024
     print(f"      {zip_path.name} ({size_mb:.0f} MB)")

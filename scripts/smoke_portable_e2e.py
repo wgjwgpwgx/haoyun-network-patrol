@@ -45,6 +45,8 @@ WIN_DIR, WIN_EXE = "昊云网络巡检助手", "启动巡检助手.exe"
 LINUX_EXE = "patrol-assistant"
 # 运行期数据与登录凭据不随包分发;从包目录取副本时同样不带
 _NOT_SHIPPED = ("data", "output", "config/auth.yaml", "config/smtp.yaml")
+# 包里的 config/ai.yaml 可能配着真实的 Key:冒烟只连模拟设备,不调用外部 AI 接口
+_QUIET_ENV = {"PATROL_AI_ENABLED": "false"}
 SEEDS = [("huawei", "huawei", "vrp_switch"),
          ("h3c", "h3c", "s7506e"),
          ("zte", "zte", "zxr10_switch")]
@@ -106,14 +108,15 @@ class Runner:
         self.container = f"patrol-smoke-{os.getpid()}-{next(self._seq)}"
         cmd = ["docker", "run", "--rm", "--network", "host", "--name", self.container,
                "--user", f"{os.getuid()}:{os.getgid()}"]
-        for key, value in {**(env or {}), "HOME": "/tmp"}.items():  # 以普通用户身份运行时 /root 不可写
+        for key, value in {**(env or {}), "HOME": "/tmp", **_QUIET_ENV}.items():  # 以普通用户身份运行时 /root 不可写
             cmd += ["-e", f"{key}={value}"]
         cmd += ["-v", f"{self.app_dir.parent}:/work", "-w", f"/work/{self.app_dir.name}",
                 self.image, f"./{self.exe}", *args]
         return cmd
 
-    def _popen(self, argv: list[str], **kwargs) -> subprocess.Popen:
-        proc = subprocess.Popen(argv, cwd=self.app_dir, **kwargs)
+    def _popen(self, argv: list[str], env: dict | None = None, **kwargs) -> subprocess.Popen:
+        proc = subprocess.Popen(argv, cwd=self.app_dir,
+                                env={**os.environ, **_QUIET_ENV, **(env or {})}, **kwargs)
         proc.container = self.container  # type: ignore[attr-defined]
         return proc
 
@@ -129,8 +132,7 @@ class Runner:
 
     def spawn(self, *args: str, env: dict | None = None, log: BinaryIO) -> subprocess.Popen:
         """后台启动(不传 args 即不带参数启动),输出写入 log。"""
-        return self._popen(self.command(*args, env=env), env={**os.environ, **(env or {})},
-                           stdout=log, stderr=subprocess.STDOUT,
+        return self._popen(self.command(*args, env=env), env=env, stdout=log, stderr=subprocess.STDOUT,
                            start_new_session=sys.platform != "win32")
 
     def stop(self, proc: subprocess.Popen) -> None:
