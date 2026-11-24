@@ -56,8 +56,10 @@ def assemble() -> Path:
     app_dir.mkdir(parents=True)
     exe = DIST_ROOT / "linux" / f"{EXE_NAME}"
     shutil.move(str(exe), app_dir / EXE_NAME)
-    # config/ 随包分发(发布仓为演示数据),打开文件夹即可改
-    shutil.copytree(ROOT / "config", app_dir / "config")
+    # config/ 随包分发(发布仓为演示数据),打开文件夹即可改。
+    # 登录凭据与发信配置不随包(原因同 build_portable.py),首次运行各自生成
+    shutil.copytree(ROOT / "config", app_dir / "config",
+                    ignore=shutil.ignore_patterns("auth.yaml", "smtp.yaml"))
     (app_dir / "output").mkdir(exist_ok=True)
     (app_dir / "使用说明.txt").write_text(
         "昊云网络巡检助手(Linux 绿色版)\n"
