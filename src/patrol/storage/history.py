@@ -113,6 +113,7 @@ class HistoryStore:
                 CREATE INDEX IF NOT EXISTS idx_results_run
                     ON check_results(run_id);
             """)
+            self._ensure_value_column(conn)  # 老库升级:首次打开即补 value 列
 
     def save_run(
         self,

@@ -174,9 +174,12 @@ class Application:
         if running:
             from tkinter import messagebox
 
+            # 与实际行为一致:排队的任务被取消,正在采集的设备跑完当前这一台才退出
             if not messagebox.askyesno(
                 "确认退出",
-                f"还有 {len(running)} 个巡检任务进行中,退出将中止执行。确定退出?",
+                f"还有 {len(running)} 个巡检任务未完成。\n\n"
+                "退出后:尚未开始的巡检会被取消;正在采集的设备会在完成后退出,"
+                "进程可能还要停留一小会儿。确定退出?",
                 parent=self.root,
             ):
                 return

@@ -72,13 +72,23 @@ class TestProbeDevice:
         mock_ch.assert_called_once()  # 未降级
 
     @patch("netmiko.ConnectHandler")
-    def test_fallback_to_telnet(self, mock_ch):
+    def test_ssh_failure_does_not_fall_back_to_telnet(self, mock_ch):
+        """SSH 失败不得自动改用 Telnet:那会把密码以明文发到网络。"""
+        mock_ch.side_effect = OSError("ssh refused")
+        r = probe_device("192.0.2.1", "u", "p")
+        assert not r["ok"] and "ssh refused" in r["error"]
+        mock_ch.assert_called_once()
+        assert mock_ch.call_args[1]["device_type"] == "generic"
+        assert "Telnet" in r["error"]  # 提示用户显式选择
+
+    @patch("netmiko.ConnectHandler")
+    def test_explicit_telnet_is_still_available(self, mock_ch):
         conn = MagicMock()
         conn.send_command.return_value = self.HUAWEI_OUT
-        # 第一次(SSH)连接抛错,第二次(Telnet)成功
-        mock_ch.side_effect = [OSError("ssh refused"), conn]
-        r = probe_device("192.0.2.1", "u", "p")
+        mock_ch.return_value = conn
+        r = probe_device("192.0.2.1", "u", "p", login_method="telnet")
         assert r["ok"] and r["method"] == "telnet"
+        assert mock_ch.call_args[1]["device_type"] == "generic_termserver"
 
     @patch("netmiko.ConnectHandler")
     def test_both_fail(self, mock_ch):

@@ -2,23 +2,29 @@
 
 更新源为一个 JSON 清单(manifest)，格式:
     {
-        "version": "0.2.0",              # 最新版本号(必填)
-        "url": "https://.../xx-绿色版.zip", # 更新包下载地址(可选)
+        "version": "0.2.0",                 # 最新版本号(必填)
+        "url": "https://.../xx-绿色版.zip",    # 更新包下载地址(可选)
+        "sha256": "<更新包文件的 sha256>",    # http(s) 地址必填:缺失则拒绝下载
         "notes": "更新说明(可选)"
     }
 
-清单支持 http(s) 地址与本地文件路径(便于内网/离线分发)。
+清单支持 http(s) 地址与本地文件路径(便于内网/离线分发);本地路径不强制校验值。
 更新源地址保存在 config/settings.yaml 的 update_manifest_url 字段。
 """
 from __future__ import annotations
 
 import json
+import logging
 import re
+import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
 import yaml
+
+logger = logging.getLogger(__name__)
 
 _SETTINGS_PATH = Path("config") / "settings.yaml"
 
@@ -43,10 +49,16 @@ def save_update_url(url: str, settings_path: str | Path | None = None) -> None:
     if path.exists():
         try:
             loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                data = loaded
         except yaml.YAMLError:
-            data = {}
+            # 文件已损坏:直接按新内容写入会把其中其余设置一并清掉,
+            # 先把原文件留底(可手工恢复)再写
+            backup = path.with_name(
+                f"{path.stem}.broken-{datetime.now():%Y%m%d_%H%M%S}{path.suffix}")
+            shutil.copy2(path, backup)
+            logger.warning("设置文件无法解析,原文件已留底为 %s", backup)
+            loaded = None
+        if isinstance(loaded, dict):
+            data = loaded
     data["update_manifest_url"] = url.strip()
     header = (
         "# 软件设置(系统设置页面自动保存)\n"

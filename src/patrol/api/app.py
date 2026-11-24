@@ -197,7 +197,8 @@ def create_task(body: TaskCreate):
 @app.get("/audit", tags=["系统"])
 def list_audit(limit: int = 100):
     """操作审计(最近 N 条:设备/客户/任务/迁移操作)。"""
-    return _audit.recent(min(limit, 500))
+    # 下限也要夹:负数在 SQL 的 LIMIT 里表示"不限制",会把整张表返回
+    return _audit.recent(max(1, min(limit, 500)))
 
 
 @app.get("/tasks/{task_id}", response_model=TaskOut, tags=["巡检任务"])

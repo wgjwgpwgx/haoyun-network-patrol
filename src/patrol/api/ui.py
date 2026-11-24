@@ -416,9 +416,12 @@ async def device_scan_import(request: Request,
                              devices_json: str = Form(...),
                              customer: str = Form(""),
                              username: str = Form(""),
-                             password: str = Form("")):
-    """扫描结果一键建档(勾选设备+填统一账号密码)。"""
+                             password: str = Form(""),
+                             community: str = Form("")):
+    """扫描结果一键建档(勾选设备+填统一账号密码;未填账号时按 SNMP 建档)。"""
     import json as json_mod
+
+    from patrol.models import validate_host
 
     try:
         devices = json_mod.loads(devices_json)
@@ -430,6 +433,7 @@ async def device_scan_import(request: Request,
     for d in devices:
         name = d.get("sysname") or d.get("host", "").replace(".", "-")
         try:
+            validate_host(str(d.get("host", "")))
             _device_store.create({
                 "name": name, "customer": customer,
                 "host": d["host"],
@@ -438,7 +442,9 @@ async def device_scan_import(request: Request,
                 "login_method": "snmp" if not username else "ssh",
                 "port": 161 if not username else 22,
                 "username": username or "snmp",
-                "password": password or community_fallback(),
+                # 团体字优先用扫描时填的那个:写死默认值的话,
+                # 自定义团体字的设备建档后 SNMP 采集必然失败
+                "password": password or community.strip() or community_fallback(),
                 "enabled": True,
             })
             imported += 1
@@ -938,7 +944,14 @@ def report_compare(request: Request, a: str = "", b: str = ""):
             })
 
     comparison = None
-    if a and b and a != b:
+
+    def _safe_json_name(name: str) -> bool:
+        # a/b 来自请求参数:只接受 output 下的纯 .json 报告数据文件名,
+        # 否则可借助 ../ 读取并展示任意位置的 JSON
+        return (bool(name) and name.endswith(".json")
+                and not any(c in name for c in ("..", "/", "\\")))
+
+    if a and b and a != b and _safe_json_name(a) and _safe_json_name(b):
         try:
             data_a = json_mod.loads(
                 (out / a).read_text(encoding="utf-8"))

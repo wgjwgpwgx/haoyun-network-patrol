@@ -30,14 +30,18 @@ def get_incremental_checks(vendor: str, device_type: str,
 
     # 上次异常项
     previous_fails: set[str] = set()
+    has_history = False
     try:
         hist = HistoryStore()
-        # 取该厂商/类型最近一次巡检中 FAIL/UNKNOWN 的检查项名
-        # 遍历所有设备太重;按 check_results 表反查
-        # 简化:取全部最新 FAIL/UNKNOWN 项(跨设备但同 check_name 语义一致)
+        # 简化:取全库最新一期中的 FAIL/UNKNOWN 项(跨设备但同 check_name 语义一致;
+        # 遍历所有设备太重,按 check_results 表反查)
         import sqlite3
-        with sqlite3.connect(str(hist._db)) as conn:
+        # HistoryStore 只持有库路径(_db_path);此前写成不存在的 _db,异常被下方
+        # 兜底吞掉,增量模式因此永远退化为全量
+        with sqlite3.connect(str(hist._db_path)) as conn:
             conn.row_factory = sqlite3.Row
+            has_history = conn.execute(
+                "SELECT 1 FROM patrol_runs LIMIT 1").fetchone() is not None
             rows = conn.execute("""
                 SELECT DISTINCT c.check_name FROM check_results c
                 JOIN patrol_runs r ON r.id = c.run_id
@@ -47,6 +51,9 @@ def get_incremental_checks(vendor: str, device_type: str,
             previous_fails = {r["check_name"] for r in rows}
     except Exception:  # noqa: BLE001 - 历史不可用退化为全量
         return all_checks
+
+    if not has_history:
+        return all_checks  # 首次巡检:没有可参考的历史,跑全量
 
     # 核心项 ∪ 上次异常项
     should_run = CORE_CHECKS | previous_fails

@@ -390,6 +390,7 @@ async function importScanned() {
         customer: document.getElementById('scanCustomer').value,
         username: document.getElementById('scanUsername').value,
         password: document.getElementById('scanPassword').value,
+        community: document.getElementById('scanCommunity').value.trim(),  // 建档沿用扫描时填的团体字
     });
     const r = await (await fetch('/ui/devices/scan-import', {
         method: 'POST',
