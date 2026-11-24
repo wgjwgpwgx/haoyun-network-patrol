@@ -24,7 +24,7 @@
 | 任意终端浏览器 | `--web` 模式远程访问 | 天然跨平台 |
 
 > - PDF 导出:Windows 自动使用 Microsoft Word;Linux/macOS 自动改用 LibreOffice(`sudo apt install libreoffice-writer fonts-wqy-microhei` 或 `brew install --cask libreoffice`)。
-> - 验证口径:Windows 包做过桌面冻结冒烟与人工走查;Linux 包在 CI 的同代 glibc(glibc 2.28,与银河麒麟 V10 / 统信 UOS 同代)干净容器里实跑,尚未在信创实机上验证。
+> - 验证口径:每个发布包在发布前都跑成品冒烟——连上模拟设备,命令行巡检与网页端巡检各跑一遍(登录 → 采集 → 判定 → 出报告);Windows 包另做桌面窗口冒烟与人工走查,Linux 包在同代 glibc(glibc 2.28,与银河麒麟 V10 / 统信 UOS 同代)的干净容器里跑。**信创实机、以及 Linux 下的真实设备采集,都还没有验证过**;v0.2.0 的 Linux 包有缺陷,请使用 v0.2.1 及以上版本。
 
 ## 功能特性
 
@@ -113,6 +113,8 @@ ruff check src tests scripts packaging   # 静态检查:语法错误与未定义
 python packaging/build_portable.py                      # Windows 绿色包
 python packaging/build_portable_linux.py --arch x86_64  # Linux 绿色包(需在 glibc 2.28 基线环境中构建)
 # 产物: dist/ 下的程序目录与 zip / tar.gz(不包含本机的登录凭据与发信配置)
+# 打包后建议跑一遍成品冒烟:模拟设备 → 命令行巡检 + 网页端巡检,确认这个包真的能用
+python scripts/smoke_portable_e2e.py
 ```
 
 ## 目录结构

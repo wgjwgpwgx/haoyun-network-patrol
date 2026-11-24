@@ -138,9 +138,11 @@ jobs:
         run: |
           ls -la dist
           test "$(ls dist/*.zip dist/*.tar.gz | wc -l)" -eq 3
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.zip
-            dist/*.tar.gz
-          fail_on_unmatched_files: true
+      - uses: actions/checkout@v4  # 取上传脚本
+      # 只往事先建好的草稿 Release 上传附件,不改变草稿状态:附件与发布说明要人工核对后再生效。
+      # (softprops/action-gh-release 未显式指定时会直接把草稿发布出去,v0.2.1 就是这样提前上线的)
+      - name: 上传到草稿 Release
+        run: python3 scripts/upload_release_assets.py "$TAG" dist/*.zip dist/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
