@@ -1,9 +1,27 @@
 """启动器(绿色包入口)单元测试"""
 from __future__ import annotations
 
+import io
 import socket
 
 from patrol import launcher
+
+
+class TestForceUtf8:
+    """重定向输出统一 UTF-8:本机是中文 Windows(GBK)复现不了,用代码页流模拟。"""
+
+    def test_code_page_stream_prints_chinese_as_utf8(self):
+        raw = io.BytesIO()
+        stream = io.TextIOWrapper(raw, encoding="cp1252")
+        launcher._force_utf8(stream, None)
+        print("巡检完成", file=stream)
+        stream.flush()
+        assert raw.getvalue().decode("utf-8").strip() == "巡检完成"
+
+    def test_utf8_stream_left_alone(self):
+        stream = io.TextIOWrapper(io.BytesIO(), encoding="utf-8")
+        launcher._force_utf8(stream)
+        assert stream.errors == "strict"
 
 
 class TestSeedConfig:
@@ -94,3 +112,20 @@ class TestDispatch:
                             lambda: called.setdefault("mode", "cli"))
         assert launcher.main() == 0
         assert called["mode"] == "cli"
+
+    def test_no_gui_library_switches_to_web_mode(self, monkeypatch, tmp_path, capsys):
+        """Linux 包不带图形界面:导入桌面窗口失败时应转 Web 模式,而不是带着异常退出。"""
+        import builtins
+
+        self._prepare(monkeypatch, tmp_path, ["patrol-assistant"])
+        real_import = builtins.__import__
+
+        def _import(name, *args, **kwargs):
+            if name == "patrol.desktop.app":
+                raise ImportError("No module named 'tkinter'")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", _import)
+        monkeypatch.setattr(launcher, "run_web", lambda r: 0)
+        assert launcher.main() == 0
+        assert "自动切换 Web 模式" in capsys.readouterr().out

@@ -34,18 +34,31 @@ def read_version() -> str:
 
 def run_pyinstaller(arch: str) -> None:
     print(f"[1/3] PyInstaller 打包中(linux-{arch},约 2~5 分钟)……")
+    # 与 Windows 包共用同一份 spec:页面模板、报告模板、Word 模板等数据文件,
+    # 以及 netmiko 按厂商名动态加载的驱动类,都只在 spec 里收集
     cmd = [
         sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean",
-        "--onefile",
-        "--name", EXE_NAME,
-        "--console",  # Linux 终端使用:CLI 巡检输出/Web 模式日志
         "--distpath", str(DIST_ROOT / "linux"),
         "--workpath", str(BUILD_DIR / "pyi-linux"),
-        str(ROOT / "src" / "patrol" / "launcher.py"),
+        str(ROOT / "packaging" / "patrol_portable.spec"),
     ]
     result = subprocess.run(cmd, cwd=ROOT)
     if result.returncode != 0:
         sys.exit("PyInstaller 打包失败,请查看上方报错。")
+
+
+def check_embedded_defaults(exe: Path) -> None:
+    """内置默认配置必须与 config/ 一致,只少登录凭据与发信配置(原因同 build_portable.py)。"""
+    from PyInstaller.archive.readers import CArchiveReader
+
+    embedded = {name.replace("\\", "/") for name in CArchiveReader(str(exe)).toc}
+    expected = {f"config-defaults/{p.relative_to(ROOT / 'config').as_posix()}"
+                for p in (ROOT / "config").rglob("*") if p.is_file()}
+    skipped = {f"config-defaults/{name}" for name in ("auth.yaml", "smtp.yaml")}
+    if embedded & skipped:
+        sys.exit(f"程序内嵌了本机的登录/发信配置,打包已中止:{sorted(embedded & skipped)}")
+    if expected - skipped - embedded:
+        sys.exit(f"config/ 下的文件没有正确内置为默认配置,打包已中止:{sorted(expected - skipped - embedded)}")
 
 
 def assemble() -> Path:
@@ -56,6 +69,7 @@ def assemble() -> Path:
     app_dir.mkdir(parents=True)
     exe = DIST_ROOT / "linux" / f"{EXE_NAME}"
     shutil.move(str(exe), app_dir / EXE_NAME)
+    check_embedded_defaults(app_dir / EXE_NAME)
     # config/ 随包分发(发布仓为演示数据),打开文件夹即可改。
     # 登录凭据与发信配置不随包(原因同 build_portable.py),首次运行各自生成
     shutil.copytree(ROOT / "config", app_dir / "config",
@@ -65,9 +79,9 @@ def assemble() -> Path:
         "昊云网络巡检助手(Linux 绿色版)\n"
         "\n"
         "快速开始(终端):\n"
-        "  ./patrol-assistant            # 无图形库时自动转 Web 模式\n"
+        "  ./patrol-assistant            # 自动转 Web 模式(Linux 包不带图形界面)\n"
         "  ./patrol-assistant --web      # Web 模式(浏览器访问输出的 /ui 地址,带登录认证)\n"
-        "  ./patrol-assistant run -c config/tasks/demo.yaml   # CLI 直接巡检\n"
+        "  ./patrol-assistant run        # 命令行巡检:巡检设备库里启用的全部设备\n"
         "\n"
         "配置:config/ 下按需修改(设备档案 devices.yaml、规则 rules/、AI ai.yaml)\n"
         "报告:巡检产物在 output/ 目录\n"

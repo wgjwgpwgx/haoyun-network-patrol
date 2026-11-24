@@ -136,8 +136,29 @@ def assemble() -> None:
     exe = DIST_DIR / f"{EXE_NAME}.exe"
     if not exe.exists():
         sys.exit(f"未找到 {exe},打包异常。")
+    check_embedded_defaults(exe)
     size_mb = exe.stat().st_size / 1024 / 1024
     print(f"      {exe.name} ({size_mb:.0f} MB)")
+
+
+def check_embedded_defaults(exe: Path) -> None:
+    """内置默认配置必须与 config/ 一致,只少登录凭据与发信配置两个文件。
+
+    config/ 会作为"首次运行的默认配置"内置进程序。构建机上运行过程序,这两个文件就在,
+    一旦被带进去,所有安装都会共用同一把会话签名密钥、同一个发信授权码;反过来,
+    内置清单写错(比如目标路径多拼了一层),首次运行播种配置时就会崩。
+    检查的是程序内部——只看压缩包里的文件清单发现不了。
+    """
+    from PyInstaller.archive.readers import CArchiveReader
+
+    embedded = {name.replace("\\", "/") for name in CArchiveReader(str(exe)).toc}
+    expected = {f"config-defaults/{p.relative_to(ROOT / 'config').as_posix()}"
+                for p in (ROOT / "config").rglob("*") if p.is_file()}
+    skipped = {f"config-defaults/{name}" for name in ("auth.yaml", "smtp.yaml")}
+    if embedded & skipped:
+        sys.exit(f"程序内嵌了本机的登录/发信配置,打包已中止:{sorted(embedded & skipped)}")
+    if expected - skipped - embedded:
+        sys.exit(f"config/ 下的文件没有正确内置为默认配置,打包已中止:{sorted(expected - skipped - embedded)}")
 
 
 def make_zip() -> Path:

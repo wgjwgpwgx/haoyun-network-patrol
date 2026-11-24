@@ -33,6 +33,7 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.17",
+    "pyinstaller>=6.0",  # tests/test_packaging_spec.py 核对打包配置的数据文件清单
 ]
 
 [project.scripts]

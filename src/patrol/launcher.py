@@ -84,6 +84,20 @@ def set_console_title(title: str) -> None:
         pass
 
 
+def _force_utf8(*streams) -> None:
+    """标准输出被重定向到管道/文件时,统一成 UTF-8。
+
+    这类流按系统代码页编码:在非中文 Windows(如 cp1252)上打印中文直接抛
+    UnicodeEncodeError,命令行巡检、--web 把输出重定向后,第一个中文提示就会崩。
+    冻结程序不认 PYTHONUTF8 / PYTHONIOENCODING,只能在入口处理;
+    已是 UTF-8 的流(真实控制台走宽字符接口)不动。
+    """
+    for stream in streams:
+        if stream is None or "utf-8" in (getattr(stream, "encoding", "") or "").lower():
+            continue
+        stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 def _ensure_cli_output() -> None:
     """窗口子系统构建（双击无黑框）下保证命令行输出可见。
 
@@ -103,7 +117,9 @@ def _ensure_cli_output() -> None:
             return None
 
     if _fileno(sys.stdout) is not None:
-        return  # 已有正常输出流(PyInstaller 已接管管道/文件)
+        # PyInstaller 已接管管道/文件,但流按系统代码页编码
+        _force_utf8(sys.stdout, sys.stderr)
+        return
 
     import ctypes
     import io
