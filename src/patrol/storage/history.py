@@ -19,6 +19,45 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from patrol.models import DeviceAsset, DeviceReport
+
+# 各检查项写入历史库 value 列的指标(供趋势图与预测);未列出的检查项不取值
+_METRIC_KEYS: dict[str, str] = {
+    "cpu_usage": "usage_percent", "memory_usage": "usage_percent",
+    "temperature": "value", "storage": "used_percent",
+}
+
+
+def history_metric_value(check_name: str, details: dict[str, Any]) -> float | None:
+    """检查项落历史库用的指标值;取不到或非数值时为 None。"""
+    value = details.get(_METRIC_KEYS.get(check_name, ""))
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def save_report_runs(store: "HistoryStore",
+                     results: list[tuple[DeviceAsset, DeviceReport]],
+                     report_file: str | None = None) -> None:
+    """把一次巡检的各设备结果写入历史库(界面任务与命令行共用同一口径)。"""
+    for asset, report in results:
+        store.save_run(
+            device_name=asset.name, device_host=asset.host,
+            device_type=asset.device_type, vendor=asset.vendor,
+            customer=asset.customer, project="",
+            pass_count=report.pass_count, fail_count=report.fail_count,
+            unknown_count=report.unknown_count,
+            check_items=[{
+                "name": it.name, "category": it.category,
+                "status": it.status.value,
+                "severity": str(it.details.get("severity", "")),
+                "message": it.message,
+                "suggestion": str(it.details.get("suggestion", "") or ""),
+                "value": history_metric_value(it.name, it.details),
+            } for it in report.check_items],
+            error=report.error, report_file=report_file,
+        )
+
 
 class HistoryStore:
     """SQLite 巡检历史存储"""

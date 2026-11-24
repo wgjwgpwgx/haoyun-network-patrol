@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk
 
 from patrol.desktop import service
@@ -586,8 +587,6 @@ class ReportPreviewDialog(_BaseDialog):
         ttk.Button(btns, text="打开 HTML 文件", command=self._open_file).pack(side="left")
 
     def _open_file(self) -> None:
-        from pathlib import Path
-
         try:
             service.open_path(Path("output") / self._filename)
         except RuntimeError:

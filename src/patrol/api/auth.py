@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import os
 import secrets
 import time
@@ -31,6 +32,8 @@ import yaml
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+
+logger = logging.getLogger(__name__)
 
 COOKIE_NAME = "patrol_session"
 SESSION_TTL = 12 * 3600  # 会话默认有效期 12 小时(config/auth.yaml 的 session_ttl_hours 可调)
@@ -115,7 +118,12 @@ def save_auth_config(cfg: dict, path: Path | None = None) -> None:
 
 
 def load_auth_config(path: Path | None = None) -> dict:
-    """读取 config/auth.yaml;文件缺失时自动播种默认账号(admin/admin123)。"""
+    """读取 config/auth.yaml;文件缺失时自动播种默认账号(admin/admin123)。
+
+    文件存在但读不了或内容无效时绝不落盘重置:否则一次手改出错、文件被截断或
+    临时不可读,登录凭据就被悄悄换成文档里公开的默认密码。此时保持原文件不动,
+    本次运行拒绝所有登录,日志给出恢复办法(修复或删除该文件后重启)。
+    """
     path = path or auth_config_path()
     if not path.exists():
         cfg = default_auth_config()
@@ -123,12 +131,15 @@ def load_auth_config(path: Path | None = None) -> dict:
         return cfg
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError):
-        data = {}
-    if not isinstance(data, dict) or not data.get("password_hash"):
-        data = default_auth_config()
-        save_auth_config(data, path)
-    return data
+    except (OSError, yaml.YAMLError, UnicodeDecodeError) as e:
+        data, reason = None, f"读取失败: {e}"
+    if isinstance(data, dict) and data.get("password_hash"):
+        return data
+    reason = reason if data is None else "缺少 password_hash 或内容不是映射"
+    logger.error("Web 登录配置 %s 不可用(%s),已拒绝所有登录;"
+                 "请修复或删除该文件后重启", path, reason)
+    return {"enabled": True, "username": "", "password_hash": "",
+            "secret": secrets.token_hex(32), "session_ttl_hours": 12}
 
 
 # ── 凭据解析:环境变量 > config/auth.yaml ──────────────────────

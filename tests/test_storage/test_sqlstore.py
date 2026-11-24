@@ -101,6 +101,19 @@ class TestBootstrapMigration:
         assert len(dev2.list()) == 2
         assert audit.recent(1)[0]["action"] == "migrate_yaml"
 
+    def test_migrate_runs_once_so_deleted_device_stays_deleted(self, tmp_path: Path):
+        """迁移带标记只做一次:界面里删掉的旧设备,重启后不得从 YAML 复活。"""
+        cfg = self._prepare(tmp_path)
+        db = tmp_path / "data/patrol.db"
+        dev, _, _, _ = bootstrap(
+            db, str(cfg / "devices.yaml"), str(cfg / "customers.yaml"))
+        assert {d["name"] for d in dev.list()} == {"old1", "old2"}
+        dev.delete("old1")
+
+        dev2, _, _, _ = bootstrap(
+            db, str(cfg / "devices.yaml"), str(cfg / "customers.yaml"))
+        assert {d["name"] for d in dev2.list()} == {"old2"}
+
     def test_export_yaml_backup(self, tmp_path: Path):
         cfg = self._prepare(tmp_path)
         db = tmp_path / "data/patrol.db"

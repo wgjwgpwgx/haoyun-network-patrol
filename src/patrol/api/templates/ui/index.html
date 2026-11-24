@@ -42,20 +42,22 @@
             <div class="card-body p-0">
                 {% if fail_items %}
                 <table class="table table-hover mb-0">
-                    <thead><tr><th>设备</th><th>检查项</th><th>级别</th><th>状态</th></tr></thead>
+                    <thead><tr><th>设备</th><th>检查项</th><th>级别</th><th>问题</th></tr></thead>
                     <tbody>
                     {% for item in fail_items %}
                     <tr>
                         <td>{{ item.device_name }}</td>
                         <td>{{ item.category }}</td>
                         <td><span class="badge badge-{{ item.severity }}">{% if item.severity == 'critical' %}严重{% elif item.severity == 'warning' %}警告{% elif item.severity == 'info' %}提示{% else %}{{ item.severity }}{% endif %}</span></td>
-                        <td><span class="badge badge-fail">FAIL</span></td>
+                        <td class="small">{{ item.message }}</td>
                     </tr>
                     {% endfor %}
                     </tbody>
                 </table>
+                {% elif stats.fail_total == '—' %}
+                <div class="text-center text-muted py-4">还没有巡检报告。发起一次巡检后,这里会列出需要关注的问题</div>
                 {% else %}
-                <div class="text-center text-muted py-4">暂无异常</div>
+                <div class="text-center text-muted py-4">最近一次巡检未发现异常项</div>
                 {% endif %}
             </div>
         </div>

@@ -14,7 +14,7 @@ from typing import Callable
 
 logger = logging.getLogger(__name__)
 
-_PROMPT = "SimCore>"
+_PROMPT = "SimCore"   # 提示符主体;实际提示符为 SimCore>(用户模式)/ SimCore#(特权模式)
 
 
 class SimDeviceServer:
@@ -63,41 +63,68 @@ class SimDeviceServer:
     def _send(self, conn, text: str) -> None:
         conn.sendall((text + "\r\n").encode("utf-8", errors="replace"))
 
-    def _recv_line(self, conn) -> str:
-        buf = b""
-        while True:
-            ch = conn.recv(1)
-            if not ch:
-                return ""
-            if ch in (b"\r", b"\n"):
-                if buf:
+    @staticmethod
+    def _reader(conn):
+        """返回"按行读取"函数:CRLF 视为一个行结束符,空行返回 "",对端关闭返回 None。
+
+        客户端(netmiko)的行结束符并不统一——用户名后发 CRLF、密码后只发 CR、
+        探测提示符时发一个空行,所以必须逐字节按状态切行,不能按固定分隔符读。
+        """
+        last_was_cr = False  # 上个字节是 CR:紧随的 LF 属于同一个行结束符
+
+        def readline() -> str | None:
+            nonlocal last_was_cr
+            buf = b""
+            while True:
+                ch = conn.recv(1)
+                if not ch:
+                    return None
+                if last_was_cr and ch == b"\n":
+                    last_was_cr = False
+                    continue
+                last_was_cr = ch == b"\r"
+                if ch in (b"\r", b"\n"):
                     return buf.decode("utf-8", errors="replace").strip()
-                continue
-            buf += ch
+                buf += ch
+
+        return readline
 
     def _handle(self, conn) -> None:
         try:
-            # 登录仿真:Username: → Password: → 提示符(提示符裸发,无换行)
+            readline = self._reader(conn)
+
+            # 登录仿真:Username: → Password: → 提示符
             self._send(conn, "Warning: Simulated device (patrol simulator)")
-            conn.sendall(b"Username: ")
-            self._recv_line(conn)          # 用户名(任意)
-            conn.sendall(b"Password: ")
-            self._recv_line(conn)          # 密码(任意)
-            # 命令循环
+            self._send(conn, "Username: ")
+            readline()                  # 用户名(任意)
+            self._send(conn, "Password: ")
+            readline()                  # 密码(任意)
+
+            # 命令循环。行为按真机习惯,否则 netmiko 登录后无法定位提示符:
+            #   提示符独占一行 / 键入的命令原样回显 / 空行(只按回车)也重新给出提示符
+            privileged = False
             while True:
-                conn.sendall(self.prompt.encode())
-                line = self._recv_line(conn)
-                if not line:
-                    continue
+                suffix = "#" if privileged else ">"
+                conn.sendall(("\r\n" + self.prompt + suffix).encode())
+                line = readline()
+                if line is None:
+                    return              # 对端关闭
                 low = line.lower().strip()
-                if low in ("quit", "exit", "logout"):
+                if line and low in ("quit", "exit", "logout"):
                     self._send(conn, "Bye")
                     return
+                if not line:
+                    continue             # 空行:循环开头已重新给出提示符
+                self._send(conn, line)   # 回显命令:netmiko 以此划分命令与输出
+                if low == "enable" and not privileged:
+                    # 类 IOS 设备的提权:enable → Password: → 提示符变为 #
+                    self._send(conn, "Password: ")
+                    readline()           # enable 密码(任意)
+                    privileged = True
+                    continue
                 output = self._match(low)
                 if output:
-                    conn.sendall(
-                        (output + "\r\n").encode("utf-8", errors="replace"))
-                conn.sendall(self.prompt.encode())
+                    self._send(conn, output)
         except (OSError, ConnectionResetError):
             pass
         finally:

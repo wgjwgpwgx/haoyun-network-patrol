@@ -236,8 +236,11 @@ def parse_config_cur(output: str) -> dict[str, Any]:
     in_vty = False
     for line in output.splitlines():
         stripped = line.strip().lower()
+        if stripped.startswith("no "):
+            continue  # 显式关闭某功能:不能因为行里带功能名就算"已启用"
 
-        # Telnet（ZXR10 默认开启 telnet server，显式 no 关闭）
+        # Telnet:配置中出现启用语句才算启用(ZXR10 部分版本默认开启 Telnet,
+        # 配置中不显示该行——此情形待真机确认)
         if "telnet-server enable" in stripped or "telnet server enable" in stripped:
             telnet_enabled = True
         if "user-interface vty" in stripped and "protocol" in stripped and "telnet" in stripped:
@@ -247,12 +250,11 @@ def parse_config_cur(output: str) -> dict[str, Any]:
         if "ssh-server enable" in stripped or "ssh server enable" in stripped:
             ssh_enabled = True
 
-        # SNMP（三种官方写法）
-        m = re.search(r"(?:snmp-server\s+community|snmp\s+community(?:\s+\w+)?)\s+(\S+)",
+        # SNMP 团体字:兼容 "community <值> [ro|rw]" 与 "community [read|write] <值>" 两种语序。
+        # 读写属性必须显式列举,不能用贪婪的 \w+ 去吞,否则会把属性词当成团体字
+        m = re.search(r"(?:set\s+)?snmp(?:-server|-agent)?\s+community"
+                      r"(?:\s+(?:read|write|ro|rw))?\s+(\S+)",
                       line, re.IGNORECASE)
-        if m:
-            communities.append({"level": "read", "community": m.group(1)})
-        m = re.search(r"set\s+snmp\s+community(?:\s+\w+)?\s+(\S+)", line, re.IGNORECASE)
         if m:
             communities.append({"level": "read", "community": m.group(1)})
 
@@ -272,8 +274,8 @@ def parse_config_cur(output: str) -> dict[str, Any]:
                         or "protocol input all" in stripped):
                     telnet_enabled = True
 
-        # STP
-        if re.match(r"(spanning-tree|stp)\b", stripped) and "no " not in stripped:
+        # STP(全局启用语句;"spanning-tree disable" 这类关闭语句不算)
+        if re.match(r"(?:spanning-tree|stp)\b", stripped) and "disable" not in stripped:
             stp_enabled = True
 
     dangerous = [c for c in communities if c["community"].lower() in ("public", "private")]

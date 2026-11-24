@@ -56,6 +56,10 @@ def download_package(
     """下载(或本地拷贝)更新包到 update/downloads/,可选 sha256 校验。"""
     if not (url or "").strip():
         raise UpdateError("更新包地址为空")
+    if re.match(r"^https?://", url, re.IGNORECASE) and not expected_sha256.strip():
+        # 远端包必须带校验值:清单里省略 sha256 就等于完全不校验,
+        # 界面却仍提示"已校验"。本地文件路径(内网共享/手动指定)不强制。
+        raise UpdateError("更新清单缺少 sha256 校验值,已拒绝下载(无法确认更新包完整性)")
     dl_dir = update_dir(root) / "downloads"
     dl_dir.mkdir(parents=True, exist_ok=True)
     dest = dl_dir / f"update-{version or 'pkg'}.zip"

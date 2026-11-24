@@ -8,7 +8,8 @@
   security 安全合规 15% | logs_config 日志告警/配置管理 15%
 
 UNKNOWN 不进分母(无法判断不扣分也不加分);某组无任何判定项时
-其权重按剩余组归一,避免凭空得分。
+其权重按剩余组归一,避免凭空得分;全部检查项都无法判断时不下结论
+(score 为 None、等级"数据不足"),绝不按"100 分优"呈现。
 """
 from __future__ import annotations
 
@@ -55,7 +56,7 @@ def score_device(device: DeviceReport) -> dict:
     """单设备健康评分。
 
     返回 {score, grade, veto, groups:{组:{score,pass,fail,unknown}}};
-    error(连接失败)设备直接 0 分差级。
+    error(连接失败)设备直接 0 分差级;没有任何可判定项时 score 为 None。
     """
     if device.error:
         return {"score": 0, "grade": "差", "veto": False, "groups": {},
@@ -90,20 +91,22 @@ def score_device(device: DeviceReport) -> dict:
         weighted_sum += gscore * WEIGHTS[g]
         weight_used += WEIGHTS[g]
 
-    score = round(weighted_sum / weight_used) if weight_used else 100
-    if veto:
+    score = round(weighted_sum / weight_used) if weight_used else None
+    if veto:  # 否决必有 FAIL 项,此时 score 一定已算出
         score = min(score, _VETO_CAP)
-    return {"score": score, "grade": _grade(score), "veto": veto,
-            "groups": groups}
+    return {"score": score,
+            "grade": _grade(score) if score is not None else "数据不足",
+            "veto": veto, "groups": groups}
 
 
 def score_report(report: PatrolReport) -> dict:
-    """全网评分:各设备算术平均 + 分设备明细。"""
+    """全网评分:各设备算术平均 + 分设备明细(无判定项的设备不参与平均)。"""
     devices = {d.asset.name: score_device(d) for d in report.devices}
-    scores = [v["score"] for v in devices.values()]
-    overall = round(sum(scores) / len(scores)) if scores else None
+    judged = [v["score"] for v in devices.values() if v["score"] is not None]
+    overall = round(sum(judged) / len(judged)) if judged else None
     return {
         "overall": overall,
-        "overall_grade": _grade(overall) if overall is not None else "—",
+        "overall_grade": (_grade(overall) if overall is not None
+                          else ("数据不足" if devices else "—")),
         "devices": devices,
     }

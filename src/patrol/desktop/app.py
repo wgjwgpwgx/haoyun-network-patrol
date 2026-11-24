@@ -43,6 +43,8 @@ class Application:
         from patrol.storage.sqlstore import bootstrap
         self.devices, self.customers, self.tasks, self._audit = bootstrap()
         self.task_manager = TaskManager(self.devices, self.tasks)
+        # 上次退出时没跑完的任务不会再有结果:标为已中断,而不是永远显示"进行中"
+        self.task_manager.reconcile_interrupted()
         self.panels: dict[str, tk.Frame] = {}
         self._nav_buttons: dict[str, tk.Button] = {}
         self._current = ""

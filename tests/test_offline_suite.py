@@ -167,17 +167,18 @@ class TestKnowledgeCopilotRoute:
 
         from patrol.parser_copilot import parse_with_rules
         fields = {"usage_percent": {"regex": r"CPU.*?(\d+)", "type": "int"}}
-        with patch("patrol.parser_copilot.generate_with_ai",
-                   return_value={"ok": True, "fields": fields,
-                                 "sample": parse_with_rules("CPU 14%", fields)}):
-            client = TestClient(am.app)
-            r = client.post("/ui/knowledge/copilot", data={
-                "check_name": "cpu_usage", "raw_output": "CPU 14%",
-                "vendor": "huawei", "device_type": "vrp_switch"})
+        try:
+            with patch("patrol.parser_copilot.generate_with_ai",
+                       return_value={"ok": True, "fields": fields,
+                                     "sample": parse_with_rules("CPU 14%", fields)}):
+                client = TestClient(am.app)
+                r = client.post("/ui/knowledge/copilot", data={
+                    "check_name": "cpu_usage", "raw_output": "CPU 14%",
+                    "vendor": "huawei", "device_type": "vrp_switch"})
+        finally:  # 断言失败也要还原全局实例,否则污染后续用例
+            (am._device_store, am._customer_store, am._task_store,
+             am._task_manager, um._device_store, um._customer_store,
+             um._task_store) = saved
         data = r.json()
         assert data["ok"] and data["sample"]["usage_percent"] == 14
         assert data["vendor"] == "huawei"
-
-        (am._device_store, am._customer_store, am._task_store,
-         am._task_manager, um._device_store, um._customer_store,
-         um._task_store) = saved

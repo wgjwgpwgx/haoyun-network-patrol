@@ -24,7 +24,8 @@ from docx.enum.section import WD_ORIENT
 from docx.oxml.ns import qn, nsdecls
 from docx.oxml import parse_xml
 
-from patrol.models import CheckStatus, PatrolReport, DeviceReport
+from patrol import __version__
+from patrol.models import CheckItem, CheckStatus, PatrolReport, DeviceReport
 from patrol.reporter.base import BaseReporter
 from patrol.utils.filename import safe_component
 from patrol.utils.redact import redact
@@ -274,17 +275,18 @@ class WordReporter(BaseReporter):
         sec_fail = sum(v["groups"].get("security", {}).get("fail", 0)
                        for v in overall["devices"].values())
         sec_total = sec_pass + sec_fail
-        if overall["overall"] is not None:
-            p_ = doc.add_paragraph()
-            p_.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            run = p_.add_run(
-                f"全网健康评分:{overall['overall']}({overall['overall_grade']})")
-            run.bold = True
-            run.font.size = Pt(14)
-            run.font.name = "Microsoft YaHei"
-            run._element.rPr.rFonts.set(qn("w:eastAsia"), "Microsoft YaHei")
-            run.font.color.rgb = _style_color(
-                "primary_color", RGBColor(0x1B, 0x5F, 0xA8))
+        p_ = doc.add_paragraph()
+        p_.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p_.add_run(
+            (f"全网健康评分:{overall['overall']}({overall['overall_grade']})"
+             if overall["overall"] is not None else
+             "全网健康评分:数据不足(没有可判定的检查项)"))
+        run.bold = True
+        run.font.size = Pt(14)
+        run.font.name = "Microsoft YaHei"
+        run._element.rPr.rFonts.set(qn("w:eastAsia"), "Microsoft YaHei")
+        run.font.color.rgb = _style_color(
+            "primary_color", RGBColor(0x1B, 0x5F, 0xA8))
         if sec_total:
             rate = round(sec_pass / sec_total * 100)
             p2 = doc.add_paragraph()
@@ -466,8 +468,10 @@ class WordReporter(BaseReporter):
             sections += 1
             doc.add_heading(
                 f"{d.asset.name}(对比快照 {prev_ts})", level=2)
+            # 两侧统一先脱敏再比:本期文本来自报告 JSON 时已是脱敏后的,
+            # 快照是原文,口径不一致会把"脱敏差异"报成配置变更
             diff = list(difflib.unified_diff(
-                prev_text.splitlines(), item.raw_output.splitlines(),
+                redact(prev_text).splitlines(), redact(item.raw_output).splitlines(),
                 fromfile="上期配置", tofile="本期配置", lineterm="", n=1))
             shown = [ln for ln in diff[2:]][:80]  # 跳过文件头两行,限 80 行
             if not shown:
@@ -505,7 +509,18 @@ class WordReporter(BaseReporter):
 
         if not fail_items:
             doc.add_heading("风险汇总", level=1)
-            doc.add_paragraph("未发现风险项，所有检查通过。", style="Intense Quote")
+            # 没有 FAIL 不等于全部正常:采集异常与无法判定的项要如实点出
+            errors = sum(1 for d in report.devices if d.error)
+            unknown = sum(d.unknown_count for d in report.devices)
+            caveats = ([f"{errors} 台设备采集异常"] if errors else []) + \
+                      ([f"{unknown} 项检查无法判定"] if unknown else [])
+            if caveats:
+                doc.add_paragraph(
+                    "未发现异常项,但" + "、".join(caveats)
+                    + ",不能据此认定全部正常,详见各设备明细。",
+                    style="Intense Quote")
+            else:
+                doc.add_paragraph("未发现风险项，所有检查通过。", style="Intense Quote")
             doc.add_paragraph("")
             return
 
@@ -580,7 +595,8 @@ class WordReporter(BaseReporter):
         health = score_device(device)
         info_table = doc.add_table(rows=8, cols=2, style="Table Grid")
         info_data = [
-            ("健康评分", f"{health['score']}({health['grade']})"
+            ("健康评分", ("数据不足(无可判定的检查项)" if health["score"] is None
+                          else f"{health['score']}({health['grade']})")
              + (" [存在严重告警,已降档]" if health["veto"] else "")),
             ("归属客户", device.asset.customer or "未指定"),
             ("管理 IP", device.asset.host),
@@ -716,7 +732,7 @@ class WordReporter(BaseReporter):
         doc.add_paragraph("")
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run("昊云网络巡检助手 v0.1.0 · 报告中的敏感信息已自动脱敏")
+        run = p.add_run(f"昊云网络巡检助手 v{__version__} · 报告中的敏感信息已自动脱敏")
         run.font.size = Pt(8)
         run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
         run.font.name = "Microsoft YaHei"

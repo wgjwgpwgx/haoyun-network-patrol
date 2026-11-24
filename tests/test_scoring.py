@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
+from docx import Document
 
 from patrol.models import (
     CheckItem, CheckStatus, DeviceAsset, DeviceReport, PatrolReport,
@@ -31,6 +32,80 @@ FULL = [
     ("interface_status", "PASS", ""), ("telnet_service", "PASS", ""),
     ("logbuffer", "PASS", ""),
 ]
+
+
+class TestNoJudgedItems:
+    """一项都没判定出来(全部 UNKNOWN / 没有检查项)时不得给出 100 分"优"。"""
+
+    def test_all_unknown_is_not_scored(self):
+        r = score_device(_dev([("cpu_usage", "UNKNOWN", ""),
+                               ("fan_status", "UNKNOWN", "")]))
+        assert r["score"] is None and r["grade"] == "数据不足"
+
+    def test_no_items_is_not_scored(self):
+        assert score_device(_dev([]))["score"] is None
+
+    def test_connection_error_still_zero(self):
+        r = score_device(_dev([], error="连接超时"))
+        assert r["score"] == 0 and r["grade"] == "差"
+
+    def test_report_average_skips_unjudged_devices(self):
+        good = _dev(FULL, name="a")
+        blind = _dev([("cpu_usage", "UNKNOWN", "")], name="b")
+        overall = score_report(PatrolReport(devices=[good, blind]))
+        assert overall["overall"] == 100
+        assert overall["devices"]["b"]["score"] is None
+
+    def test_report_all_unjudged(self):
+        only = _dev([("cpu_usage", "UNKNOWN", "")])
+        overall = score_report(PatrolReport(devices=[only]))
+        assert overall["overall"] is None
+        assert overall["overall_grade"] == "数据不足"
+
+    def test_report_without_devices(self):
+        assert score_report(PatrolReport())["overall_grade"] == "—"
+
+    def test_reports_render_without_comparing_none(self, tmp_path):
+        """HTML / Word / Excel 三种报告都要能渲染"数据不足"而不是报错。"""
+        from patrol.reporter.excel import ExcelReporter
+        from patrol.reporter.html import HTMLReporter
+        from patrol.reporter.word import WordReporter
+
+        report = PatrolReport(devices=[_dev([("cpu_usage", "UNKNOWN", "")])])
+        HTMLReporter().generate(report, tmp_path / "r.html")
+        assert "数据不足" in (tmp_path / "r.html").read_text(encoding="utf-8")
+        WordReporter().generate(report, tmp_path / "r.docx")
+        assert "数据不足" in " ".join(
+            c.text for tb in Document(str(tmp_path / "r.docx")).tables
+            for r in tb.rows for c in r.cells)
+        ExcelReporter().generate(report, tmp_path / "r.xlsx")
+        assert (tmp_path / "r.xlsx").exists()
+
+
+class TestRiskSummaryWording:
+    def test_word_does_not_claim_all_passed_when_unknown_or_error(self, tmp_path):
+        """没有 FAIL 但有采集异常/无法判定项时,风险汇总不能写"所有检查通过"。"""
+        from docx import Document
+
+        from patrol.reporter.word import WordReporter
+
+        broken = _dev([], name="down", error="连接超时")
+        unknown = _dev([("cpu_usage", "UNKNOWN", ""), ("fan_status", "UNKNOWN", "")])
+        out = tmp_path / "r.docx"
+        WordReporter().generate(PatrolReport(devices=[broken, unknown]), out)
+        text = "\n".join(p.text for p in Document(str(out)).paragraphs)
+        assert "所有检查通过" not in text
+        assert "1 台设备采集异常" in text and "2 项检查无法判定" in text
+
+    def test_word_all_passed_only_when_truly_clean(self, tmp_path):
+        from docx import Document
+
+        from patrol.reporter.word import WordReporter
+
+        out = tmp_path / "ok.docx"
+        WordReporter().generate(PatrolReport(devices=[_dev(FULL)]), out)
+        assert "未发现风险项，所有检查通过。" in "\n".join(
+            p.text for p in Document(str(out)).paragraphs)
 
 
 class TestScoreDevice:

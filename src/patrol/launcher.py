@@ -19,7 +19,7 @@ import webbrowser
 from pathlib import Path
 
 APP_NAME = "昊云网络巡检助手"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.2.1"
 DEFAULT_PORT = 8765
 
 
@@ -147,6 +147,10 @@ def main() -> int:
     os.chdir(root)
     seed_config(root)
     (root / "output").mkdir(parents=True, exist_ok=True)
+    if sys.platform != "win32":
+        # 系统级凭据加密(DPAPI)仅 Windows 可用:其他平台设备密码明文落库,必须让用户知情
+        print("提示:当前平台不支持系统级凭据加密,设备密码将以明文保存在 "
+              "data/patrol.db,请限制该文件的访问权限。")
 
     args = sys.argv[1:]
 
@@ -189,7 +193,7 @@ def run_web(root: Path) -> int:
     if port != preferred:
         print(f"  (端口 {preferred} 被占用，已自动改用 {port})")
     print("  浏览器即将自动打开，请稍候……")
-    print("  配置文件 : config\\devices.yaml （设备清单）")
+    print("  设备档案 : 在界面「设备管理」中维护(data\\patrol.db)")
     print(f"  报告目录 : {root / 'output'}")
     print()
     print("  关闭本窗口即可停止服务。")

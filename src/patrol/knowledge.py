@@ -14,6 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from patrol.utils.redact import redact
+
 logger = logging.getLogger(__name__)
 
 KNOWLEDGE_DIR = Path("output/knowledge")
@@ -54,7 +56,7 @@ def save_snapshot(device_meta: dict, items: list[dict],
         "error": error,
         "items": [
             {"name": it.get("name", ""), "command": it.get("command", ""),
-             "raw_output": it.get("raw_output", "")}
+             "raw_output": redact(it.get("raw_output", ""))}  # 落盘即脱敏
             for it in items if (it.get("raw_output") or "").strip()
         ],
     }
@@ -422,30 +424,85 @@ def export_all(output_path: Path | None = None) -> Path:
     return output_path
 
 
+# 交接包内的顶层前缀 → 本地根目录
+_HANDOFF_ROOTS: dict[str, Path] = {
+    "knowledge": KNOWLEDGE_DIR,
+    "parser_copilot": Path("config/parser_copilot"),
+    "config/rules": Path("config/rules"),
+}
+_HANDOFF_MAX_BYTES = 20 * 1024 * 1024  # 单个成员上限,防解压炸弹
+
+
+def _safe_member(root: Path, rel: str) -> Path | None:
+    """交接包成员名 → 本地路径;越界(zip slip)、目录或非 yaml 文件一律拒绝。"""
+    try:
+        target = (root / rel).resolve()
+    except (OSError, ValueError):
+        return None
+    if root.resolve() not in target.parents or target.suffix.lower() != ".yaml":
+        return None
+    return target
+
+
+def snapshot_paths(customer: str, device: str) -> list[Path]:
+    """该设备现有快照文件。"""
+    d = KNOWLEDGE_DIR / _safe(customer) / _safe(device)
+    return sorted(d.glob("*.yaml")) if d.is_dir() else []
+
+
+def snapshot_contents(customer: str, device: str) -> dict[Path, bytes]:
+    """该设备现有快照 {路径: 内容},供"替换导入"在导入前留底。"""
+    return {p: p.read_bytes() for p in snapshot_paths(customer, device)}
+
+
+def finish_replace(customer: str, device: str,
+                   before: dict[Path, bytes]) -> bool:
+    """"替换导入"的收尾:确认确有新资料后,清掉被取代的旧快照。
+
+    返回是否确有新资料——没有则不动任何文件(调用方据此报错,旧资料保留)。
+    快照文件名只精确到秒,新资料可能与旧快照同名:同名文件内容已变即说明
+    它装的是新资料,必须保留,只删除内容仍是旧内容的那些。
+    """
+    after = {p: p.read_bytes() for p in snapshot_paths(customer, device)}
+    fresh = any(after.get(p) != data for p, data in before.items()) or \
+        any(p not in before for p in after)
+    if not fresh:
+        return False
+    for path, data in before.items():
+        if after.get(path) == data:
+            path.unlink(missing_ok=True)
+    return True
+
+
 def import_all(zip_path: Path) -> dict:
-    """导入交接包:解压到对应目录。"""
+    """导入交接包:解压到对应目录。
+
+    交接包是人与人之间交换的文件,成员名不可信:逐个校验目标必须落在对应
+    根目录内且为 yaml,否则拒绝(否则成员名写成 ../../ 即可覆盖任意文件)。
+    """
     import zipfile
 
-    counts = {"knowledge": 0, "rules": 0, "copilot": 0, "style": 0}
+    buckets = {"knowledge": "knowledge", "parser_copilot": "copilot",
+               "config/rules": "rules"}
+    counts = {"knowledge": 0, "rules": 0, "copilot": 0, "style": 0, "rejected": 0}
     with zipfile.ZipFile(zip_path) as zf:
-        for name in zf.namelist():
-            if name.startswith("knowledge/"):
-                dest = KNOWLEDGE_DIR / name[len("knowledge/"):]
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                zf.extract(name, str(KNOWLEDGE_DIR.parent))
-                counts["knowledge"] += 1
-            elif name.startswith("parser_copilot/"):
-                dest = Path("config/parser_copilot") / name[len("parser_copilot/"):]
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes(zf.read(name))
-                counts["copilot"] += 1
-            elif name.startswith("config/rules/"):
-                dest = Path("config/rules") / name[len("config/rules/"):]
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes(zf.read(name))
-                counts["rules"] += 1
-            elif name == "config/report_style.yaml":
-                Path("config").mkdir(exist_ok=True)
-                Path("config/report_style.yaml").write_bytes(zf.read(name))
-                counts["style"] += 1
+        for info in zf.infolist():
+            name = info.filename
+            target: Path | None
+            bucket: str
+            if name == "config/report_style.yaml":
+                target, bucket = Path("config/report_style.yaml"), "style"
+            else:
+                key = next((k for k in _HANDOFF_ROOTS
+                            if name.startswith(k + "/")), None)
+                target = (_safe_member(_HANDOFF_ROOTS[key], name[len(key) + 1:])
+                          if key is not None else None)
+                bucket = buckets.get(key or "", "")
+            if target is None or info.file_size > _HANDOFF_MAX_BYTES:
+                logger.warning("交接包成员被拒绝: %s", name)
+                counts["rejected"] += 1
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(zf.read(info))
+            counts[bucket] += 1
     return counts

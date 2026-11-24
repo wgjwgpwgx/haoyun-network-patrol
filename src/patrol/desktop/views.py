@@ -175,7 +175,7 @@ class DevicesPanel(BasePanel):
 
     def __init__(self, parent, app):
         super().__init__(parent, app)
-        self._header("设备管理", "巡检对象清单,存于 config\\devices.yaml")
+        self._header("设备管理", "巡检对象清单(在界面中维护,与命令行/定时巡检共用)")
 
         toolbar = tk.Frame(self.body, bg=COLORS["bg"])
         toolbar.pack(fill="x", pady=(0, 8))
@@ -566,7 +566,9 @@ class TasksPanel(BasePanel):
             self._inflight.discard(t.get("task_id", ""))
             name = t.get("device_name", "")
             if t.get("status") == "completed":
-                msg = (f"「{name}」巡检完成。\n\n是否立即预览报告?\n"
+                bad = int(t.get("error_count") or 0)
+                warn = f"\n\n注意:其中 {bad} 台设备采集异常,详见报告。" if bad else ""
+                msg = (f"「{name}」巡检完成。{warn}\n\n是否立即预览报告?\n"
                        f"(也可稍后用顶部按钮:预览 / 导出 Word / 导出 Excel)")
                 if messagebox.askyesno("巡检完成", msg, parent=self):
                     self._preview()
@@ -715,41 +717,35 @@ class TasksPanel(BasePanel):
 
         def done(path):
             self.app.set_status(f"已生成 {path.name}")
-            _maybe_email(path, filename)
+            _maybe_email(path, task)
 
         def fail(exc):
             messagebox.showerror("导出失败", str(exc), parent=self)
 
-        def _maybe_email(path, fname):
+        def _maybe_email(path, task):
             if not messagebox.askyesno(
                     "导出成功",
                     f"已生成 {path.name}\n\n是否打开文件?",
                     parent=self):
-                _ask_send(path)
+                _ask_send(path, task)
                 return
             service.open_path(path)
-            _ask_send(path)
+            _ask_send(path, task)
 
-        def _ask_send(path):
-            """邮件分发(销号清单 #13c):客户档案配置了邮箱且 SMTP 启用时询问。"""
+        def _ask_send(path, task):
+            """邮件分发:按本次任务涉及的设备汇总各客户接收邮箱(SMTP 启用时逐客户询问)。
+
+            task 是发起导出时锁定的任务:导出期间列表选中项可能已变,
+            不能事后再取"目标任务"(否则可能把 A 客户的报告发给 B 客户)。
+            """
             try:
-                task = self._target_report_task() or {}
-                device = task.get("device_name", "")
-                dev = self.app.devices.get(device) or {}
-                customer = dev.get("customer", "")
-                cust = self.app.customers.get(customer) if customer else None
-                emails = [e.strip() for e in
-                          ((cust or {}).get("email") or "").split(";") if e.strip()]
-                if not customer or not emails:
-                    return  # 客户未配邮箱,静默跳过
                 if not service.smtp_config().get("enabled"):
                     return  # SMTP 未启用,静默跳过
+                targets = service.email_targets(
+                    task, self.app.devices, self.app.customers)
+                if not targets:
+                    return  # 客户未配邮箱,静默跳过
             except Exception:  # noqa: BLE001
-                return
-            if not messagebox.askyesno(
-                    "邮件分发",
-                    f"是否把报告发送给「{customer}」接收邮箱?",
-                    parent=self):
                 return
 
             def send_ok(r):
@@ -759,17 +755,23 @@ class TasksPanel(BasePanel):
             def send_fail(exc):
                 messagebox.showerror("邮件分发", str(exc), parent=self)
 
-            run_in_thread(
-                self,
-                lambda: service.send_report_email(
-                    emails,
-                    subject=f"网络设备巡检报告 - {customer}",
-                    body=(f"{customer}:\n\n"
-                          "附件为最新网络设备巡检报告,请查收。\n\n"
-                          "(本邮件由昊云网络巡检助手自动发送)"),
-                    attachments=[path],
-                    cc=service.smtp_config().get("cc_boss", []) or []),
-                on_done=send_ok, on_error=send_fail)
+            for customer, emails in targets.items():
+                if not messagebox.askyesno(
+                        "邮件分发",
+                        f"是否把报告发送给「{customer}」接收邮箱?",
+                        parent=self):
+                    continue
+                run_in_thread(
+                    self,
+                    lambda c=customer, to=emails: service.send_report_email(
+                        to,
+                        subject=f"网络设备巡检报告 - {c}",
+                        body=(f"{c}:\n\n"
+                              "附件为最新网络设备巡检报告,请查收。\n\n"
+                              "(本邮件由昊云网络巡检助手自动发送)"),
+                        attachments=[path],
+                        cc=service.smtp_config().get("cc_boss", []) or []),
+                    on_done=send_ok, on_error=send_fail)
 
         run_in_thread(self, lambda: work(filename), on_done=done, on_error=fail)
 

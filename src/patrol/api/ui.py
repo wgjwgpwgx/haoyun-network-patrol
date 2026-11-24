@@ -107,17 +107,29 @@ def dashboard(request: Request):
 
     recent_tasks = sorted(all_tasks, key=lambda t: t.get("created_at", ""), reverse=True)[:10]
 
+    # 风险数取自最近一份报告(与桌面概览同一口径);没有报告时如实显示"—"
+    from patrol.desktop import service as _svc
+
     stats = {
         "device_count": len(devices),
         "customer_count": len(_customer_store.list()),
-        "pass_total": 0,
-        "fail_total": 0,
-        "unknown_total": 0,
+        "pass_total": "—", "fail_total": "—", "unknown_total": "—",
     }
+    fail_items: list[dict] = []
+    latest = _svc.list_reports()
+    if latest:
+        try:
+            summary = _svc.report_summary(_svc.load_report_data(latest[0]["name"]))
+            stats.update(pass_total=summary["total_pass"],
+                         fail_total=summary["total_fail"],
+                         unknown_total=summary["total_unknown"])
+            fail_items = summary["fail_items"]
+        except (ValueError, FileNotFoundError):
+            pass
 
     return templates.TemplateResponse("ui/index.html", _ctx(
         request, active="dashboard", stats=stats,
-        fail_items=[], recent_tasks=recent_tasks,
+        fail_items=fail_items[:20], recent_tasks=recent_tasks,
     ))
 
 
@@ -455,6 +467,11 @@ def task_precheck(device_names: str = Form(...)):
             continue
         host = dev.get("host", "")
         method = dev.get("login_method", "ssh")
+        if method in ("snmp", "console"):
+            # SNMP 走 UDP、Console 是串口,无法用 TCP 探测判断,按可达处理
+            results.append({"name": name, "host": host, "port": 0,
+                            "reachable": True, "reason": ""})
+            continue
         port = dev.get("port", 22 if method == "ssh" else
                        23 if method == "telnet" else
                        161 if method == "snmp" else 443)
@@ -710,14 +727,16 @@ async def knowledge_import(request: Request, customer: str = Form(...),
 
     from patrol import knowledge as kb
 
-    # 替换模式:先确定设备名,删除旧快照
+    # 替换模式:给旧快照留底,确认新资料确实导入成功后再清——
+    # 先删后导入的话,文件损坏或识别不出内容时旧资料就永久丢了
+    stale: dict[Path, bytes] = {}
     if replace:
         if file and file.filename:
             device = device or Path(file.filename).stem
         elif text.strip():
             device = device or "导入资料"
         if device:
-            kb.delete_device(customer, device)
+            stale = kb.snapshot_contents(customer, device)
 
     try:
         if file and file.filename:
@@ -737,6 +756,8 @@ async def knowledge_import(request: Request, customer: str = Form(...),
             kb.import_text(text, customer, device or "导入资料")
         else:
             raise ValueError("请粘贴文本或选择文件")
+        if stale and not kb.finish_replace(customer, device, stale):
+            raise ValueError("未从资料中识别出任何命令回显,原有资料已保留")
         return RedirectResponse(
             f"/ui/knowledge?customer={quote(customer)}", status_code=303)
     except Exception as e:  # noqa: BLE001 - 用户可见
@@ -843,6 +864,8 @@ async def knowledge_import_zip(file: UploadFile = File(...)):
         msg = (f"导入完成:知识库 {counts['knowledge']} 条,"
                f"规则 {counts['rules']} 个,"
                f"解析器 {counts['copilot']} 个")
+        if counts.get("rejected"):
+            msg += f";已拒绝 {counts['rejected']} 个不可信成员(路径越界或非 yaml)"
         return {"ok": True, "message": msg}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
@@ -894,8 +917,8 @@ def report_compare(request: Request, a: str = "", b: str = ""):
     out = Path("output")
     if out.exists():
         for f in sorted(out.glob("*.json"), reverse=True):
-            if f.stem.startswith("patrol_") or f.stem.startswith("zz_"):
-                continue  # 跳过非报告 JSON
+            if f.stem.startswith("zz_"):
+                continue  # 跳过非报告 JSON(系统产出的报告 JSON 均为 patrol_ 前缀)
             json_check = out / f.name
             try:
                 d = json_mod.loads(json_check.read_text(encoding="utf-8"))

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+from patrol import __version__
 from patrol.models import CheckStatus, PatrolReport
 from patrol.reporter.base import BaseReporter
 from patrol.utils.redact import redact
@@ -62,6 +63,7 @@ class HTMLReporter(BaseReporter):
             pie_svg=_summary_pie(sanitized_devices),
             device_charts=_device_charts(sanitized_devices),
             predictions=predictions,
+            app_version=__version__,
             CheckStatus=CheckStatus,
         )
 
@@ -121,6 +123,7 @@ class HTMLReporter(BaseReporter):
                 "model": device.model,
                 "software_version": device.software_version,
                 "uptime": device.uptime,
+                "serial_number": device.serial_number,
                 "collected_at": device.collected_at.isoformat(),
                 "error": device.error,
                 "pass_count": device.pass_count,

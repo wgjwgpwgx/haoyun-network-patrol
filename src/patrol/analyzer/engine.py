@@ -90,6 +90,24 @@ class RuleEngine:
         return cls.parse_rules(data)
 
     @classmethod
+    def load_dir(cls, path: str | Path) -> list[Rule]:
+        """从规则目录加载:合并目录下全部 *.yaml。
+
+        顶层声明 enabled: false 的文件跳过(未经验证的规则包默认不参与判定)。
+        排序后"厂商/类型专用"规则排在"通配(*)"规则之前——引擎取第一条适用
+        规则,因此厂商专项规则可以覆盖默认阈值。
+        """
+        rules: list[Rule] = []
+        for f in sorted(Path(path).glob("*.yaml")):
+            with f.open(encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+            if data.get("enabled", True) is False:
+                continue
+            rules.extend(cls.parse_rules(data))
+        return sorted(rules, key=lambda r: ("*" in r.vendors,
+                                            "*" in r.device_types))
+
+    @classmethod
     def parse_rules(cls, data: dict[str, Any]) -> list[Rule]:
         """从 YAML 解析后的 dict 构造规则列表。"""
         rules: list[Rule] = []
@@ -188,8 +206,10 @@ class RuleEngine:
         # parsed.parsed 的结构如 {"usage_percent": 12}，直接用作数据源
         metric_value = _resolve_metric(parsed.parsed, rule.metric)
 
-        # metric 值为 None 且不是 exists/true/false 运算符 → 数据缺失 → UNKNOWN
-        if metric_value is None and rule.operator not in ("exists", "true", "false"):
+        # metric 值为 None → 数据缺失 → UNKNOWN。exists 运算符本身就是判断"是否存在",
+        # None 是它的有效输入;true/false 则不行——取不到值不等于"未触发",否则
+        # 安全类检查(Telnet 是否启用等)在解析不出结果时会被判成"通过"
+        if metric_value is None and rule.operator != "exists":
             return CheckItem(
                 name=parsed.name,
                 category=parsed.category,

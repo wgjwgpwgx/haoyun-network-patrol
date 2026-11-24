@@ -184,7 +184,7 @@
                 </div>
                 {% endif %}
                 {% set h = scoring.get(device.asset.name) %}
-                {% if h %}健康分: <b style="color:{% if h.score >= 90 %}#52c41a{% elif h.score >= 60 %}#faad14{% else %}#ff4d4f{% endif %}">{{ h.score }}({{ h.grade }})</b>{% if h.veto %} <span style="color:#ff4d4f">[严重告警降档]</span>{% endif %} | {% endif %}
+                {% if h %}{% if h.score is none %}健康分: <b style="color:#8c8c8c">数据不足(无可判定的检查项)</b>{% else %}健康分: <b style="color:{% if h.score >= 90 %}#52c41a{% elif h.score >= 60 %}#faad14{% else %}#ff4d4f{% endif %}">{{ h.score }}({{ h.grade }})</b>{% endif %}{% if h.veto %} <span style="color:#ff4d4f">[严重告警降档]</span>{% endif %} | {% endif %}
                 {% if device.asset.customer %}归属: {{ device.asset.customer }} | {% endif %}
                 {{ device.asset.host }} |
                 {{ device.model or '未知型号' }} |
@@ -262,7 +262,7 @@
     {% endif %}
 
     <div class="footer">
-        巡检助手 v0.1.0 | 报告中的敏感信息已自动脱敏
+        巡检助手 v{{ app_version }} | 报告中的敏感信息已自动脱敏
     </div>
 </div>
 </body>

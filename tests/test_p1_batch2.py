@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -53,34 +52,47 @@ class TestPrediction:
 
 
 class TestKnownIssues:
-    def test_known_issue_becomes_pass(self):
+    @staticmethod
+    def _run(known_issues: str):
+        """锐捷设备 CPU 91%(规则阈值 80%):验证白名单对 FAIL 项的实际作用。"""
         from patrol.analyzer.engine import RuleEngine
         from patrol.cli import run_inspection
         from patrol.collector.ssh import SSHCollector
-        from patrol.drivers.huawei.driver import HuaweiVRPSwitchDriver
-        from patrol.models import CheckStatus, DeviceAsset
+        from patrol.drivers.ruijie.driver import RuijieRGOSSwitchDriver
+        from patrol.models import DeviceAsset
 
         def fake_execute(self, command, timeout=60):
-            table = {
-                "display version":
-                    "VRP (R) software, Version 5.170 (S5735 V500R019)",
-                "display cpu-usage": "CPU Usage: 12%",
-            }
-            return table.get(command, "")
+            return {"show cpu": "CPU utilization in five seconds: 91%"}.get(command, "")
 
+        engine = RuleEngine(RuleEngine.parse_rules({"rules": [{
+            "id": "T1", "check_name": "cpu_usage", "name": "CPU 利用率过高",
+            "severity": "critical", "vendors": ["*"], "device_types": ["*"],
+            "metric": "usage_percent", "operator": "gt", "value": 80,
+            "suggestion": "排查"}]}))
+        asset = DeviceAsset(
+            name="白名单机", host="10.0.0.1", vendor="ruijie",
+            device_type="rgos_switch", username="u", password="p",
+            known_issues=known_issues)
         with patch.object(SSHCollector, "connect"), \
              patch.object(SSHCollector, "disconnect"), \
              patch.object(SSHCollector, "execute", fake_execute):
-            asset = DeviceAsset(
-                name="白名单机", host="10.0.0.1", vendor="huawei",
-                device_type="vrp_switch", username="u", password="p",
-                known_issues="temperature,transceiver")  # 标记为已知异常
-            report = run_inspection(
-                asset, HuaweiVRPSwitchDriver(), RuleEngine([]))
+            return run_inspection(asset, RuijieRGOSSwitchDriver(), engine)
 
-        # temperature/transceiver 空回显 → UNKNOWN(不是 FAIL)不受白名单影响
-        # 验证 known_issues 字段能传到 DeviceAsset
-        assert asset.known_issues == "temperature,transceiver"
+    @staticmethod
+    def _cpu(report):
+        return next(it for it in report.check_items if it.name == "cpu_usage")
+
+    def test_known_issue_is_marked_and_not_counted_as_failure(self):
+        report = self._run("cpu_usage")
+        cpu = self._cpu(report)
+        assert cpu.status.value == "PASS" and "已知异常" in cpu.message
+        assert report.fail_count == 0
+
+    def test_same_issue_without_whitelist_fails(self):
+        report = self._run("")
+        cpu = self._cpu(report)
+        assert cpu.status.value == "FAIL" and "已知异常" not in cpu.message
+        assert report.fail_count == 1
 
 
 class TestConfirmationRoute:
@@ -110,11 +122,14 @@ class TestConfirmationRoute:
 
 
 class TestCompareRoute:
-    def test_compare_page(self, tmp_path):
+    # 系统实际产出的报告 JSON 命名(界面任务:patrol_{主机}_{时间戳}.json)
+    NAMES = ("patrol_sw-01_20261101_100000.json", "patrol_sw-01_20261108_100000.json")
+
+    def _write_reports(self, tmp_path):
         out = tmp_path / "output"
         out.mkdir()
-        for name, fail_count in [("r1.json", 0), ("r2.json", 1)]:
-            data = {"generated_at": f"2026-11-{name[1]}T10:00:00",
+        for name, fail_count in zip(self.NAMES, (0, 1)):
+            data = {"generated_at": f"2026-11-0{self.NAMES.index(name) + 1}T10:00:00",
                     "devices": [{
                         "name": "sw-01", "customer": "C", "host": "10.0.0.1",
                         "model": "S5735",
@@ -127,10 +142,26 @@ class TestCompareRoute:
                              "message": "风扇故障" if fail_count else "OK",
                              "details": {}}]}]}
             (out / name).write_text(json.dumps(data), encoding="utf-8")
+        (out / "zz_notes.json").write_text('{"devices": []}', encoding="utf-8")
 
+    def test_compare_page_lists_real_report_files(self, tmp_path):
+        """下拉框必须能列出系统自己产出的 patrol_*.json(曾被当成非报告 JSON 跳过)。"""
         from fastapi.testclient import TestClient
         import patrol.api.app as am
-        r = TestClient(am.app).get(
-            "/ui/reports/compare?a=r1.json&b=r2.json")
+
+        self._write_reports(tmp_path)
+        r = TestClient(am.app).get("/ui/reports/compare")
+        assert r.status_code == 200
+        for name in self.NAMES:
+            assert name in r.text, f"多期对比下拉缺少系统产出的报告: {name}"
+        assert "zz_notes.json" not in r.text
+
+    def test_compare_page(self, tmp_path):
+        from fastapi.testclient import TestClient
+        import patrol.api.app as am
+
+        self._write_reports(tmp_path)
+        a, b = self.NAMES
+        r = TestClient(am.app).get(f"/ui/reports/compare?a={a}&b={b}")
         assert r.status_code == 200
         assert "已解决" in r.text or "新增异常" in r.text

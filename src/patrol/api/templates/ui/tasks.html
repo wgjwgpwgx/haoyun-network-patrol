@@ -93,7 +93,11 @@
                 <td><code>{{ t.device_host }}</code></td>
                 <td>
                     {% if t.status == 'completed' %}
-                    <span class="badge bg-success">完成</span>
+                        {% if t.error_count %}
+                        <span class="badge bg-warning text-dark" title="{{ t.error_count }} 台设备采集异常,详见报告">完成 · {{ t.error_count }} 台异常</span>
+                        {% else %}
+                        <span class="badge bg-success">完成</span>
+                        {% endif %}
                     {% elif t.status == 'running' %}
                     <span class="badge bg-primary"><span class="spinner-border spinner-border-sm"></span> 运行中</span>
                     {% elif t.status == 'failed' %}
@@ -105,10 +109,11 @@
                 <td>{{ t.created_at[:16] }}</td>
                 <td>{{ t.finished_at[:16] if t.finished_at else '-' }}</td>
                 <td>
-                    {% if t.status == 'completed' and t.report_file %}
+                    {% if t.report_file %}
                     <a href="/ui/reports/{{ t.report_file }}" class="btn btn-sm btn-outline-success btn-action" target="_blank"><i class="bi bi-eye"></i> 查看</a>
                     <a href="/ui/reports/{{ t.report_file }}/download" class="btn btn-sm btn-outline-primary btn-action"><i class="bi bi-download"></i></a>
-                    {% elif t.status == 'failed' and t.error %}
+                    {% endif %}
+                    {% if t.status == 'failed' and t.error %}
                     <button class="btn btn-sm btn-outline-danger btn-action" data-bs-toggle="tooltip" title="{{ t.error }}"><i class="bi bi-exclamation-circle"></i></button>
                     {% elif t.status == 'running' %}
                     <a href="/ui/tasks/{{ t.task_id }}" class="btn btn-sm btn-outline-info btn-action"><i class="bi bi-arrow-clockwise"></i></a>

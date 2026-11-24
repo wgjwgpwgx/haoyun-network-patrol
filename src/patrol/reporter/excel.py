@@ -81,14 +81,16 @@ class ExcelReporter(BaseReporter):
             ws.append([
                 d.asset.customer or "未指定", d.asset.name, d.asset.host,
                 d.asset.vendor, d.model or "未知", d.software_version or "未知",
-                f"{health['score']}({health['grade']})",
+                ("数据不足" if health["score"] is None
+                 else f"{health['score']}({health['grade']})"),
                 d.uptime or "未知",
                 d.pass_count, d.fail_count, d.unknown_count,
                 d.error or "",
             ])
-            # 分级着色:≥90 绿 / 60-89 黄 / <60 红
+            # 分级着色:≥90 绿 / 60-89 黄 / <60 红 / 无法判定 灰
             hs = health["score"]
-            fill = (_PASS_FILL if hs >= 90 else
+            fill = (_UNKNOWN_FILL if hs is None else
+                    _PASS_FILL if hs >= 90 else
                     _UNKNOWN_FILL if hs >= 60 else _FAIL_FILL)
             ws.cell(row=cell_row, column=7).fill = fill
         for row in ws.iter_rows(min_row=2):

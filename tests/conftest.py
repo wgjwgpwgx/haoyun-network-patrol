@@ -1,12 +1,28 @@
 """pytest 公共 fixtures"""
 from __future__ import annotations
 
+import atexit
+import os
+import shutil
+import tempfile
 from pathlib import Path
 
-import pytest
+# 全局隔离:测试进程的工作目录切到临时副本。patrol.api.app 导入时即执行
+# bootstrap() 绑定相对路径 data/patrol.db,历史库与 output/ 同为相对路径——
+# 不隔离则每跑一次测试都会往真实库写审计行、往真实报告目录写文件。
+# config/ 只复制规则与样式等非敏感配置,不复制真实设备/客户/登录凭据。
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_TEST_WORKDIR = Path(tempfile.mkdtemp(prefix="patrol-tests-"))
+shutil.copytree(
+    _REPO_ROOT / "config", _TEST_WORKDIR / "config",
+    ignore=shutil.ignore_patterns("auth.yaml", "devices.yaml", "customers.yaml"))
+os.chdir(_TEST_WORKDIR)
+atexit.register(shutil.rmtree, _TEST_WORKDIR, ignore_errors=True)
 
-from patrol.analyzer.engine import RuleEngine
-from patrol.models import DeviceAsset
+import pytest  # noqa: E402
+
+from patrol.analyzer.engine import RuleEngine  # noqa: E402
+from patrol.models import DeviceAsset  # noqa: E402
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 RULES_FILE = Path(__file__).parent.parent / "config" / "rules" / "default.yaml"

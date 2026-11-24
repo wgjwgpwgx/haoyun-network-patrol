@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS audit_log (
     target TEXT NOT NULL DEFAULT '',
     detail TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -192,17 +196,33 @@ class SqlAudit:
         return [dict(r) for r in rows]
 
 
+def _meta(db_path: str | Path, key: str, value: str | None = None) -> str | None:
+    """读/写 meta 表(传 value 即写入,不传即读取)。"""
+    with _connect(db_path) as conn:
+        if value is None:
+            row = conn.execute(
+                "SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+            return row[0] if row else None
+        conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, value))
+    return None
+
+
 def bootstrap(db_path: str | Path = DEFAULT_DB,
               devices_yaml: str = "config/devices.yaml",
               customers_yaml: str = "config/customers.yaml",
               ) -> tuple[SqlDeviceStore, SqlCustomerStore, SqlTaskStore, SqlAudit]:
-    """生产装配入口:建库并从旧 YAML 一次性迁移(幂等),返回四个仓库。"""
+    """生产装配入口:建库并从旧 YAML 一次性迁移(带标记,只做一次),返回四个仓库。"""
     import yaml
 
     dev_store = SqlDeviceStore(db_path)
     cust_store = SqlCustomerStore(db_path)
     task_store = SqlTaskStore(db_path)
     audit = SqlAudit(db_path)
+
+    # 迁移只做一次并留标记:否则界面里删掉的旧设备每次启动都会从 YAML 复活
+    if _meta(db_path, "yaml_migrated") is not None:
+        return dev_store, cust_store, task_store, audit
 
     migrated = 0
     for yaml_path, store, label in (
@@ -226,6 +246,8 @@ def bootstrap(db_path: str | Path = DEFAULT_DB,
         audit.log("migrate_yaml", target=str(db_path),
                   detail=f"从旧 YAML 迁移 {migrated} 条记录")
         logger.info("YAML→SQLite 迁移完成: %d 条", migrated)
+    _meta(db_path, "yaml_migrated",
+          datetime.now().isoformat(timespec="seconds"))
     return dev_store, cust_store, task_store, audit
 
 

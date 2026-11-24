@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -34,6 +35,22 @@ from patrol.utils.logging import setup_logging
 
 logger = logging.getLogger(__name__)
 
+# 设备对"命令不支持 / 无权限 / 参数错误"的标准报错(华为、H3C、锐捷、中兴、
+# 迈普及类 IOS 的 CLI 文案)。只认行数很少的回显,日志、告警等长输出不受影响。
+_COMMAND_ERROR = re.compile(
+    r"Unrecognized command|Unknown command|Invalid input|Incomplete command"
+    r"|Ambiguous command|Wrong parameter|Too many parameters|Invalid parameter"
+    r"|Command incomplete|Permission denied|command not found"
+    r"|Authorization failed|Access rejected|No permission|not authorized",
+    re.IGNORECASE,
+)
+
+
+def _is_command_error(raw_output: str) -> bool:
+    """短回显里出现设备标准报错 → 该命令实际没有执行成功。"""
+    lines = [ln for ln in raw_output.splitlines() if ln.strip()]
+    return 0 < len(lines) <= 5 and bool(_COMMAND_ERROR.search(raw_output))
+
 
 def load_config(config_path: str) -> dict[str, Any]:
     """加载 YAML 配置文件。"""
@@ -59,7 +76,9 @@ def build_assets(config: dict[str, Any]) -> list[DeviceAsset]:
 
 def _create_collector(asset: DeviceAsset) -> BaseCollector:
     """根据 login_method 创建对应的采集器。"""
-    if asset.login_method == "ssh":
+    if asset.login_method in ("ssh", "telnet", "console"):
+        # Telnet / Console(串口)与 SSH 同走 netmiko 采集器,
+        # 通道类型由采集器按登录方式解析(见 _resolve_netmiko_device_type)
         return SSHCollector()
     elif asset.login_method == "web":
         from patrol.collector.web import WebCollector
@@ -178,6 +197,22 @@ def run_inspection(
                 logger.warning("采集失败 %s: %s", cmd_def.command, e)
                 continue
 
+            # 设备回的是标准报错(命令不支持/无权限/参数错):命令并未真正执行。
+            # 既不能进解析器(报错文本会被当成数据,接口/温度等计数型项会误判通过),
+            # 也不能当配置快照留存(否则下一期会报出虚假的"配置变更")
+            if _is_command_error(raw_output):
+                report.check_items.append(CheckItem(
+                    name=cmd_def.name,
+                    category=cmd_def.category,
+                    command=cmd_def.command,
+                    raw_output=raw_output,
+                    status=CheckStatus.UNKNOWN,
+                    message="设备不支持该命令或无权限执行,无法判定",
+                ))
+                logger.warning("命令未被设备接受 %s: %s", cmd_def.command,
+                               raw_output.strip()[:80])
+                continue
+
             # 配置快照留存(销号清单 #9:供下期 diff 与审计)
             if cmd_def.name == "config_cur":
                 try:
@@ -200,10 +235,23 @@ def run_inspection(
                         command=cmd_def.command)
                     if saved is not None:
                         parsed = saved
+                        soft_empty = False
                         logger.info("[%s] %s: 命中 Copilot 规则",
                                     asset.host, cmd_def.name)
                 except Exception:  # noqa: BLE001 - 回退失败保持原结果
                     logger.debug("Copilot 回退失败", exc_info=True)
+                if soft_empty:
+                    # 回显为空 / 命令不被设备支持 / 格式未识别,且无已存解析规则:
+                    # 不能让解析器的默认值(计数为 0)被判成"检查通过",如实记 UNKNOWN
+                    report.check_items.append(CheckItem(
+                        name=cmd_def.name,
+                        category=cmd_def.category,
+                        command=cmd_def.command,
+                        raw_output=raw_output,
+                        status=CheckStatus.UNKNOWN,
+                        message="回显为空或格式未识别,无法判定",
+                    ))
+                    continue
 
             # 展开嵌套检查(如配置解析的 telnet/snmp/vty/stp)后逐项规则判定
             known = {x.strip() for x in asset.known_issues.split(",")
@@ -255,14 +303,18 @@ def main() -> None:
     """CLI 主入口。"""
     parser = argparse.ArgumentParser(description="网络设备巡检助手 - SSH 巡检工具")
     parser.add_argument(
+        "command", nargs="?", choices=["run"],
+        help="兼容写法 `patrol run`,与不带参数等价(供计划任务/快捷方式使用)",
+    )
+    parser.add_argument(
         "-c", "--config",
-        default="config/devices.yaml",
-        help="设备配置文件路径 (默认: config/devices.yaml)",
+        default=None,
+        help="可选:从指定设备 YAML 读取设备(默认:与界面共用的设备库)",
     )
     parser.add_argument(
         "-r", "--rules",
-        default="config/rules/default.yaml",
-        help="规则文件路径 (默认: config/rules/default.yaml)",
+        default="config/rules",
+        help="规则文件或目录 (默认: config/rules 目录,合并加载其下全部规则)",
     )
     parser.add_argument(
         "-o", "--output",
@@ -278,20 +330,35 @@ def main() -> None:
 
     setup_logging(logging.DEBUG if args.verbose else logging.INFO)
 
-    # 加载配置
-    config = load_config(args.config)
+    # 设备来源:默认与桌面/Web 共用同一设备库(SQLite);显式 -c 时读指定 YAML
+    if args.config:
+        config = load_config(args.config)
+        assets = build_assets(config)
+        title = config.get("title", "网络设备巡检报告")
+    else:
+        from patrol.storage.sqlstore import bootstrap
+        dev_store, _, _, _ = bootstrap()
+        assets = []
+        for d in dev_store.list():
+            try:
+                asset = DeviceAsset(**d)
+            except Exception as e:  # noqa: BLE001 - 单条档案非法不阻断巡检
+                logger.error("设备档案非法,已跳过 [%s]: %s", d.get("name"), e)
+                continue
+            if asset.enabled:
+                assets.append(asset)
+        title = "网络设备巡检报告"
 
-    # 加载规则
+    # 加载规则:目录则合并其下全部规则(厂商专项优先于通配),文件则只加载该文件
     try:
-        rules = RuleEngine.load_file(args.rules)
+        rules = (RuleEngine.load_dir(args.rules) if Path(args.rules).is_dir()
+                 else RuleEngine.load_file(args.rules))
         engine = RuleEngine(rules)
         logger.info("已加载 %d 条规则", len(rules))
     except FileNotFoundError as e:
         print(f"错误: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # 构造设备资产
-    assets = build_assets(config)
     if not assets:
         print("错误: 没有启用的设备", file=sys.stderr)
         sys.exit(1)
@@ -301,7 +368,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 执行巡检
-    patrol_report = PatrolReport(title=config.get("title", "网络设备巡检报告"))
+    patrol_report = PatrolReport(title=title)
 
     import os
     from concurrent.futures import ThreadPoolExecutor
@@ -338,35 +405,19 @@ def main() -> None:
     except Exception as e:  # noqa: BLE001 - AI 失败不阻塞巡检
         logger.warning("AI 分析失败(巡检结果不受影响): %s", e)
 
-    # 巡检历史入库(P1-3:含指标值,供趋势图)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    html_path = output_dir / f"patrol_{timestamp}.html"
+
+    # 巡检历史入库(P1-3:含指标值,供趋势图;先入库后出报告,趋势含本期)
     try:
-        from patrol.storage.history import HistoryStore
-        hist = HistoryStore()
-        for dev in patrol_report.devices:
-            hist.save_run(
-                device_name=dev.asset.name, device_host=dev.asset.host,
-                device_type=dev.asset.device_type, vendor=dev.asset.vendor,
-                customer=dev.asset.customer, project="",
-                pass_count=dev.pass_count, fail_count=dev.fail_count,
-                unknown_count=dev.unknown_count,
-                check_items=[{
-                    "name": it.name, "category": it.category,
-                    "status": it.status.value,
-                    "severity": str(it.details.get("severity", "")),
-                    "message": it.message,
-                    "suggestion": str(it.details.get("suggestion", "") or ""),
-                    "value": (it.details.get("usage_percent")
-                              if isinstance(it.details.get("usage_percent"),
-                                            (int, float)) else None),
-                } for it in dev.check_items],
-                error=dev.error, report_file=None,
-            )
+        from patrol.storage.history import HistoryStore, save_report_runs
+        save_report_runs(HistoryStore(),
+                         [(d.asset, d) for d in patrol_report.devices],
+                         report_file=html_path.name)
     except Exception as e:  # noqa: BLE001
         logger.warning("巡检历史入库失败: %s", e)
 
     # 生成报告（HTML + Word）
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    html_path = output_dir / f"patrol_{timestamp}.html"
     reporter = HTMLReporter()
     reporter.generate(patrol_report, html_path)
 
@@ -400,5 +451,8 @@ def main() -> None:
     if pdf_generated:
         print(f"  PDF 报告: {pdf_path}")
 
+    # 退出码:0=有结果且无异常;2=存在异常项;3=全部设备都没采集到(计划任务据此判断)
     if patrol_report.has_failures:
         sys.exit(2)
+    if all(d.error for d in patrol_report.devices):
+        sys.exit(3)

@@ -118,9 +118,11 @@ class TaskOut(BaseModel):
     task_id: str
     device_name: str
     device_host: str
+    device_names: list[str] = Field(default_factory=list, description="合并任务的成员设备名")
     status: Literal["pending", "running", "completed", "failed"]
     created_at: str
     started_at: str | None = None
     finished_at: str | None = None
     report_file: str | None = None
     error: str | None = None
+    error_count: int = Field(0, description="采集异常的设备台数")

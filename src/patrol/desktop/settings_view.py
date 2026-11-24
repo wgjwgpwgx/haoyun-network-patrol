@@ -62,6 +62,7 @@ class SettingsPanel(BasePanel):
         from tkinter import ttk
 
         outer, body = card(self.body, "定时巡检(Windows 计划任务)")
+        outer.pack(fill="x", pady=(0, 12))  # body 内统一 pack
         self.var_sched = tk.StringVar(value="每周三 02:00")
         rb_frame = tk.Frame(body, bg=COLORS["card"])
         rb_frame.pack(fill="x")
@@ -414,9 +415,9 @@ class SettingsPanel(BasePanel):
         outer.pack(fill="x", pady=(0, 12))  # body 内统一 pack(页头也是 pack)
         tips = (
             "1. 本工具为本地桌面小程序,双击即用,全程不需要浏览器。",
-            "2. 配置文件 config\\devices.yaml,报告目录 output\\,可直接编辑/拷贝。",
+            "2. 设备与客户档案在界面中维护(保存在 data\\patrol.db);报告目录 output\\,可直接拷贝。",
             "3. 如需在其他电脑/手机浏览器远程访问:运行 启动巡检助手.exe --web(带登录认证)。",
-            "4. 命令行批量巡检:启动巡检助手.exe run -c config\\devices.yaml。",
+            "4. 命令行批量巡检:启动巡检助手.exe run(巡检界面里已启用的全部设备)。",
         )
         for i, tip in enumerate(tips):
             tk.Label(body, text=tip, bg=COLORS["card"], fg=COLORS["text"],

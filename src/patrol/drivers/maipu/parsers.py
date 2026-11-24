@@ -215,6 +215,8 @@ def parse_config_cur(output: str) -> dict[str, Any]:
     in_vty = False
     for line in output.splitlines():
         stripped = line.strip().lower()
+        if stripped.startswith("no "):
+            continue  # 显式关闭某功能:不能因为行里带功能名就算"已启用"
 
         if "telnet-server enable" in stripped or "telnet server enable" in stripped:
             telnet_enabled = True
@@ -239,7 +241,8 @@ def parse_config_cur(output: str) -> dict[str, Any]:
                 if "transport input telnet" in stripped or "transport input all" in stripped:
                     telnet_enabled = True
 
-        if re.match(r"spanning-tree\b", stripped) and "no " not in stripped:
+        # STP(全局启用语句;"spanning-tree disable" 这类关闭语句不算)
+        if re.match(r"spanning-tree\b", stripped) and "disable" not in stripped:
             stp_enabled = True
 
     dangerous = [c for c in communities if c["community"].lower() in ("public", "private")]

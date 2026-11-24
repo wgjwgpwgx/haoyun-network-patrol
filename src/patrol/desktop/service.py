@@ -41,6 +41,7 @@ def open_path(path: Path | str) -> None:
     """用系统默认程序打开文件/目录(报告文件交付物、配置目录等)。"""
     import os
     import subprocess
+    import sys
 
     p = str(path)
     if hasattr(os, "startfile"):  # Windows
@@ -121,6 +122,26 @@ def save_device(
         if super_password:
             updates["super_password"] = super_password
         devices.update(name, updates)
+
+
+def email_targets(task: dict, devices, customers) -> dict[str, list[str]]:
+    """按任务涉及的设备汇总各客户的接收邮箱 {客户名: [邮箱, ...]}。
+
+    合并任务的 device_name 是"N 台设备合并巡检"而不是设备名,必须按成员列表
+    device_names 找客户;只认 device_name 会让合并巡检永远发不出邮件。
+    """
+    targets: dict[str, list[str]] = {}
+    members = task.get("device_names") or [task.get("device_name", "")]
+    for name in members:
+        dev = devices.get(name) or {}
+        customer = dev.get("customer", "")
+        cust = customers.get(customer) if customer else None
+        emails = [e.strip() for e in
+                  ((cust or {}).get("email") or "").split(";") if e.strip()]
+        if customer and emails:
+            merged = targets.setdefault(customer, [])
+            merged.extend(e for e in emails if e not in merged)
+    return targets
 
 
 def smtp_config() -> dict:
@@ -663,7 +684,10 @@ def install_schedule(weekly: bool = True) -> None:
 def remove_schedule() -> None:
     """卸载计划任务(未安装时静默成功)。"""
     import subprocess
+    import sys
 
+    if sys.platform != "win32":
+        return
     subprocess.run(  # noqa: S603
         ["schtasks", "/Delete", "/F", "/TN", SCHEDULE_TASK_NAME],
         capture_output=True, text=True,

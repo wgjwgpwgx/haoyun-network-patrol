@@ -277,6 +277,12 @@ function getSelected() {
     return Array.from(document.querySelectorAll('.device-cb:checked')).map(cb => cb.value);
 }
 
+// HTML 转义(拼接 innerHTML 前对任何外部来源的文本调用)
+function escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+        {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
 // 批量删除
 function batchDelete() {
     const names = getSelected();
@@ -291,9 +297,25 @@ function batchDelete() {
     form.submit();
 }
 
-// 批量巡检
-function batchPatrol() {
+// 批量巡检:发起前先做连通性预检,不可达设备由用户决定是否继续
+async function batchPatrol() {
     const names = getSelected();
+    if (!names.length) { alert('请先勾选要巡检的设备'); return; }
+    try {
+        const r = await (await fetch('/ui/tasks/precheck', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'device_names=' + encodeURIComponent(names.join(','))
+        })).json();
+        if (r.unreachable > 0) {
+            const unreachable = r.results.filter(x => !x.reachable)
+                .map(x => x.name + '(' + x.reason + ')').join('\n');
+            if (!confirm('以下 ' + r.unreachable + ' 台设备当前不可达:\n' + unreachable +
+                '\n\n仍要发起巡检吗?(不可达设备不会跳过,会在报告中显示"采集异常")')) {
+                return;
+            }
+        }
+    } catch (e) { /* 预检请求本身失败时照常发起巡检 */ }
     const form = document.getElementById('batchPatrolForm');
     form.innerHTML = '';
     names.forEach(n => {
@@ -344,13 +366,14 @@ async function doScan() {
         document.getElementById('scanStatus').textContent =
             '扫描完成:发现 ' + r.total + ' 台存活设备';
         const tbody = document.getElementById('scanTableBody');
+        // sysName / sysDescr 来自被扫描设备的 SNMP 应答(设备可控),一律转义后再拼接
         tbody.innerHTML = r.devices.map((d, i) => '<tr>' +
             '<td><input type="checkbox" class="scan-cb" checked data-idx="' + i + '"></td>' +
-            '<td><code>' + d.host + '</code></td>' +
-            '<td>' + (d.vendor || '<span class="text-muted">未识别</span>') + '</td>' +
-            '<td>' + (d.device_type || '-') + '</td>' +
-            '<td>' + (d.sysname || '-') + '</td>' +
-            '<td class="text-muted small">' + (d.sysdescr || '').substring(0, 50) + '</td></tr>'
+            '<td><code>' + escHtml(d.host) + '</code></td>' +
+            '<td>' + (escHtml(d.vendor) || '<span class="text-muted">未识别</span>') + '</td>' +
+            '<td>' + (escHtml(d.device_type) || '-') + '</td>' +
+            '<td>' + (escHtml(d.sysname) || '-') + '</td>' +
+            '<td class="text-muted small">' + escHtml((d.sysdescr || '').substring(0, 50)) + '</td></tr>'
         ).join('');
         window._scanData = r.devices;
         document.getElementById('scanResults').style.display = '';
@@ -378,29 +401,6 @@ async function importScanned() {
         location.reload();
     } else { alert('导入失败:' + r.error); }
 }
-
-// 巡检前预检(P1 第一批 ②)
-document.querySelectorAll('form[action="/ui/tasks"]').forEach(f => {
-    f.addEventListener('submit', async (e) => {
-        // 不阻止提交,先做预检显示结果
-        const names = Array.from(f.querySelectorAll('input[name=device_names]:checked'))
-            .map(cb => cb.value);
-        if (!names.length) return;
-        const body = 'device_names=' + encodeURIComponent(names.join(','));
-        const r = await (await fetch('/ui/tasks/precheck', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body})).json();
-        if (r.unreachable > 0) {
-            const unreachable = r.results.filter(x => !x.reachable)
-                .map(x => x.name + '(' + x.reason + ')').join('\n');
-            if (!confirm('以下 ' + r.unreachable + ' 台设备不可达:\n' + unreachable +
-                '\n\n是否继续巡检?(不可达设备将跳过)')) {
-                e.preventDefault();
-            }
-        }
-    });
-});
 
 // 原有代码
 document.querySelectorAll('form.delete-form').forEach(f => {

@@ -418,11 +418,13 @@ def run_in_thread(widget: tk.Misc, work, on_done=None, on_error=None) -> None:
     def _runner():
         try:
             result = work()
-        except Exception as exc:  # noqa: BLE001 - 汇报给界面
-            def _fail():
+        except Exception as e:  # noqa: BLE001 - 汇报给界面
+            def _fail(err=e):
+                # except 变量在块结束即被删除,而本回调是稍后才执行的:
+                # 必须在定义时用默认参数绑定,否则此处 NameError、错误提示弹不出来
                 widget.configure(cursor="")
                 if on_error:
-                    on_error(exc)
+                    on_error(err)
             _post(_fail)
             return
 

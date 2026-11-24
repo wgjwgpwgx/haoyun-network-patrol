@@ -23,11 +23,12 @@ from patrol.api.schemas import (
     TaskCreate,
     TaskOut,
 )
+from patrol import __version__
 from patrol.api.store import CustomerStore, DeviceStore, TaskStore
 from patrol.api.tasks import TaskManager
 from patrol.api.ui import router as ui_router, init_ui
 
-app = FastAPI(title="昊云网络巡检助手 API", version="0.1.0")
+app = FastAPI(title="昊云网络巡检助手 API", version=__version__)
 
 # 静态资源(logo 等)
 _static_dir = Path(__file__).parent / "static"
@@ -43,6 +44,8 @@ from patrol.storage.sqlstore import SqlAudit, bootstrap
 
 _device_store, _customer_store, _task_store, _audit = bootstrap()
 _task_manager = TaskManager(_device_store, _task_store)
+# 上次退出时没跑完的任务不会再有结果:标为已中断,而不是永远显示"进行中"
+_task_manager.reconcile_interrupted()
 
 
 def _who(request) -> str:

@@ -1,0 +1,151 @@
+"""桌面端缺陷回归(真实 Tk):后台线程的错误提示、定时巡检卡片、批量导入选文件。"""
+from __future__ import annotations
+
+import threading
+import time
+
+import pytest
+
+tk = pytest.importorskip("tkinter")
+
+from patrol.desktop.app import Application  # noqa: E402
+from patrol.desktop.widgets import run_in_thread  # noqa: E402
+
+
+def _make_root() -> "tk.Tk":
+    """创建 Tk 根窗口(紧邻前一个 destroy() 偶发 Tcl 初始化竞态,重试兜底)。"""
+    for attempt in range(5):
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            return root
+        except tk.TclError:
+            if attempt == 4:
+                raise
+            time.sleep(0.3)
+
+
+def _run_in_mainloop(root, done: threading.Event, timeout_ms: int = 8000) -> None:
+    """进入 Tk 主事件循环,直到 done 被置位或超时。
+
+    后台线程投递的回调只有主线程在主循环里才会被处理:tkinter 对"主线程不在
+    主循环"的跨线程调用会抛 RuntimeError,所以不能用 update() 手动泵事件。
+    """
+    def check():
+        if not done.is_set():
+            root.after(20, check)
+
+    root.after(timeout_ms, root.quit)
+    root.after(20, check)
+    root.mainloop()
+
+
+@pytest.fixture
+def app(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    cfg = tmp_path / "config"
+    cfg.mkdir()
+    (cfg / "devices.yaml").write_text("devices: []", encoding="utf-8")
+    (cfg / "customers.yaml").write_text("customers: []", encoding="utf-8")
+    (tmp_path / "output").mkdir()
+
+    root = _make_root()
+    application = Application(root)
+    application.build()
+    root.update_idletasks()
+    yield application
+    application.task_manager.shutdown()
+    try:
+        root.destroy()
+    except tk.TclError:
+        pass
+
+
+class TestBackgroundErrorIsReported:
+    """后台线程出错必须回调 on_error——此前回调里引用的 except 变量已被删除,
+    实际抛 NameError,导出失败/分析失败的错误提示弹不出来。"""
+
+    def test_error_callback_receives_the_exception(self, app):
+        got, done = [], threading.Event()
+
+        def boom():
+            raise RuntimeError("导出失败啦")
+
+        def on_error(err):
+            got.append(str(err))
+            done.set()
+
+        run_in_thread(app.root, boom, on_error=on_error)
+        _run_in_mainloop(app.root, done)
+        assert got == ["导出失败啦"]
+
+    def test_done_callback_receives_the_result(self, app):
+        got, done = [], threading.Event()
+
+        def on_done(result):
+            got.append(result)
+            done.set()
+
+        run_in_thread(app.root, lambda: 42, on_done=on_done)
+        _run_in_mainloop(app.root, done)
+        assert got == [42]
+
+
+def _laid_out_texts(widget, stop) -> list[str]:
+    """收集"自身与各级祖先(到 stop 为止)都已布局"的控件文本。"""
+    def laid_out(w) -> bool:
+        while w is not None and w is not stop:
+            if not w.winfo_manager():
+                return False
+            w = w.master
+        return True
+
+    texts: list[str] = []
+
+    def walk(w) -> None:
+        if laid_out(w):
+            try:
+                texts.append(str(w.cget("text")))
+            except tk.TclError:
+                pass
+        for child in w.winfo_children():
+            walk(child)
+
+    walk(widget)
+    return texts
+
+
+class TestSettingsPanel:
+    def test_schedule_card_is_laid_out(self, app):
+        """定时巡检卡片此前创建后忘了 pack:功能在,用户永远看不到。"""
+        app.show("settings")
+        panel = app.panels["settings"]
+        shown = "\n".join(_laid_out_texts(panel.body, panel.body))
+        assert "定时巡检(Windows 计划任务)" in shown
+
+
+class TestImportDialog:
+    def test_picking_a_ledger_file_fills_the_preview(self, app, tmp_path,
+                                                     monkeypatch):
+        """选完台账文件后必须能识别字段并填充预览——此前此处 NameError。"""
+        from openpyxl import Workbook
+        from tkinter import filedialog
+
+        from patrol.desktop.dialogs import ImportDialog
+
+        xlsx = tmp_path / "台账.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["管理地址", "用户名", "密码", "设备名称"])
+        ws.append(["192.0.2.10", "admin", "pw", "接入-01"])
+        wb.save(xlsx)
+        monkeypatch.setattr(filedialog, "askopenfilename", lambda **kw: str(xlsx))
+
+        dialog = ImportDialog(app.root, app.devices, app.customers)
+        try:
+            dialog._pick_file()
+            assert "台账.xlsx" in dialog._file_label.cget("text")
+            assert len(dialog._tree.get_children()) == 1
+            assert set(dialog._matches) >= {"host", "username", "password"}
+        finally:
+            dialog.destroy()

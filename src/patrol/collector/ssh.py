@@ -114,6 +114,12 @@ class SSHCollector(BaseCollector):
             device_params.pop("host", None)
             device_params.pop("port", None)
             device_params.pop("conn_timeout", None)
+        if asset.super_password:
+            # 类 IOS 设备(锐捷/迈普/中兴等)登录后若落在非特权模式(提示符 >),
+            # netmiko 会自动尝试 enable:Super 密码即 enable 密码,不交给它的话
+            # enable 密码与登录密码不同的设备会直接连接失败。
+            # 华为/H3C 的 super 提权在连接建立后单独执行(见 _enter_super_mode)。
+            device_params["secret"] = asset.super_password
 
         try:
             self._conn = ConnectHandler(**device_params)

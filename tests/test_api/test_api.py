@@ -14,7 +14,7 @@ from patrol.api.tasks import TaskManager
 
 
 @pytest.fixture(autouse=True)
-def isolated_stores(tmp_path):
+def isolated_stores(tmp_path, monkeypatch):
     """为每个测试创建隔离的存储实例。"""
     config_path = tmp_path / "devices.yaml"
     config_path.write_text("devices: []\n", encoding="utf-8")
@@ -24,6 +24,13 @@ def isolated_stores(tmp_path):
     ds = DeviceStore(str(config_path))
     ts = TaskStore()
     tm = TaskManager(ds, ts, str(rules_path), str(output_dir))
+
+    def _fake_inspection(asset, driver, engine, incremental=False):
+        """巡检替身:即时返回空报告,不让任务线程经 netmiko 连接外部地址。"""
+        from patrol.models import DeviceReport
+        return DeviceReport(asset=asset)
+
+    monkeypatch.setattr("patrol.api.tasks.run_inspection", _fake_inspection)
 
     # 替换全局实例
     import patrol.api.app as app_module
@@ -39,6 +46,7 @@ def isolated_stores(tmp_path):
     app_module._device_store = old_ds
     app_module._task_store = old_ts
     app_module._task_manager = old_tm
+    tm.shutdown()
 
 
 @pytest.fixture

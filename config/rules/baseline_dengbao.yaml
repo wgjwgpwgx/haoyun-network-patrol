@@ -4,8 +4,11 @@
 # 华为/H3C 官方加固指南。适用于华为 VRP / H3C Comware 系配置特征,
 # 标注:待真机验证。
 #
-# 启用方式(CLI):python -m patrol -r config/rules/baseline_dengbao.yaml
-# 也可与 default.yaml 合并加载(两文件规则同时生效)。
+# 默认不参与判定(enabled: false):配置特征尚未在真机上逐项核对,直接启用
+# 可能在交付报告里误报。真机验证通过后把下行改为 enabled: true 即可。
+enabled: false
+#
+# 也可临时单独加载(CLI):python -m patrol -r config/rules/baseline_dengbao.yaml
 # 嵌套检查项(login_lock 等)由 config_cur 自动展开,无需额外命令。
 
 rules:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "patrol"
-version = "0.2.0"
+version = "0.2.1"
 description = "网络设备巡检助手 - SSH 巡检、结果分析与报告生成"
 requires-python = ">=3.10"
 dependencies = [
@@ -24,12 +24,15 @@ dependencies = [
     "openpyxl>=3.1.0",
     "urllib3>=2.0",
     "pillow>=10.0,<12",
+    # PDF 导出在本机调用 Word 所需;缺失时只能退回 LibreOffice(多数用户未安装)
+    "pywin32>=306; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "ruff>=0.17",
 ]
 
 [project.scripts]
@@ -41,3 +44,10 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+# 只拦"真正的错误":语法错误与未定义名。未使用导入之类的存量较多,不作卡点。
+select = ["E9", "F63", "F7", "F82"]

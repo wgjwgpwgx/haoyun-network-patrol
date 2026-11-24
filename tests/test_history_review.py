@@ -81,15 +81,17 @@ def test_word_review_section(tmp_path: Path):
     assert "仍存在" in text2
 
 
-def test_word_no_history_skips_section(tmp_path: Path):
+def test_word_no_history_skips_section(tmp_path: Path, monkeypatch):
     from docx import Document
 
     from patrol.reporter.word import WordReporter
+    # 切到空目录:默认历史库按相对路径定位,确保证实"没有任何历史"
+    (tmp_path / "empty").mkdir()
+    monkeypatch.chdir(tmp_path / "empty")
     out = tmp_path / "n.docx"
-    WordReporter().generate(_report(), out)  # 默认库(测试 cwd 无 data/)
+    WordReporter().generate(_report(), out)
     text = "\n".join(p.text for p in Document(str(out)).paragraphs)
-    # 无历史数据时不渲染该章节(不报错)
-    assert "上期问题复查" not in text or "上期" in text
+    assert "上期问题复查" not in text  # 无历史数据时不渲染该章节
 
 
 def test_excel_streak_column(tmp_path: Path, monkeypatch):
